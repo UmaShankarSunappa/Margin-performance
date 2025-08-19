@@ -101,11 +101,11 @@ const products: Product[] = [
 ];
 
 const vendors: Vendor[] = [
-    { id: "ss-pharma", name: "SS Pharma Distributors" },
-    { id: "mehta-group", name: "Mehta Group" },
-    { id: "svizera", name: "Svizera Health Remedies" },
-    { id: "sanghvi-pharma", name: "Sanghvi Pharma" },
-    { id: "mahaveer-pharma", name: "Mahaveer Pharma" },
+    { id: "vishal-agencies", name: "Vishal Agencies" },
+    { id: "om-sai-distributors", name: "OM sai distributors" },
+    { id: "om-sai-enterprise", name: "OM sai enterprise" },
+    { id: "km-sons", name: "KM sons" },
+    { id: "khan-cf", name: "Khan C&F" },
     { id: "sun-pharma-dist", name: "Sun Pharma Distributors" },
     { id: "cipla-logistics", name: "Cipla Logistics" },
     { id: "lupin-dist", name: "Lupin Distribution" },
