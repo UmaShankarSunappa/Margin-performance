@@ -30,18 +30,18 @@ const products: Product[] = [
 ];
 
 const vendors: Vendor[] = [
-    { id: "medplus", name: "MedPlus" },
-    { id: "apollo", name: "Apollo Pharmacy" },
-    { id: "wellness-forever", name: "Wellness Forever" },
-    { id: "local-dist-hyd", name: "Local Distributors Hyderabad" },
+    { id: "mehta-group", name: "Mehta Group" },
+    { id: "svizera", name: "Svizera Health Remedies" },
     { id: "ss-pharma", name: "SS Pharma Distributors" },
-    { id: "reliance-retail", name: "Reliance Retail Pharma" },
-    { id: "noble-plus", name: "Noble Plus Pharmacy" },
-    { id: "frank-ross", name: "Frank Ross Pharmacy" },
-    { id: "emami-group", name: "Emami Group" },
-    { id: "mankind-pharma", name: "Mankind Pharma" },
-    { id: "sun-pharma-dist", name: "Sun Pharma Dist." },
+    { id: "sanghvi-pharma", name: "Sanghvi Pharma" },
+    { id: "mahaveer-pharma", name: "Mahaveer Pharma" },
+    { id: "sun-pharma-dist", name: "Sun Pharma Distributors" },
     { id: "cipla-logistics", name: "Cipla Logistics" },
+    { id: "lupin-dist", name: "Lupin Distribution" },
+    { id: "zydus-health", name: "Zydus Healthcare" },
+    { id: "reddy-labs-dist", name: "Dr. Reddy's Distribution" },
+    { id: "torrent-pharma", name: "Torrent Pharma Logistics" },
+    { id: "mankind-pharma", name: "Mankind Pharma" }
 ];
 
 function generatePurchases(): Purchase[] {
