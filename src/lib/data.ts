@@ -1,16 +1,81 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary } from "@/lib/types";
 import { parseISO, subYears, subDays, format, startOfYear } from 'date-fns';
-import sampleData from './data.json';
 
 
 let cache: AppData | null = null;
 
-export async function getAppData(): Promise<AppData> {
-  if (cache) {
-    return cache;
+
+// Function to generate a larger dataset
+function generateData() {
+  const products: Product[] = [];
+  const vendors: Vendor[] = [];
+  const purchases: Purchase[] = [];
+
+  const productCount = 150;
+  const vendorCount = 66;
+  const purchasesPerProduct = 10; 
+
+  // Generate Products
+  for (let i = 1; i <= productCount; i++) {
+    products.push({
+      id: `sku-${i}`,
+      name: `SKU-${i}`,
+      sellingPrice: Math.random() * 300 + 20, // 20 to 320
+    });
   }
 
-  const { products, vendors, purchases } = sampleData;
+  // Generate Vendors
+  const vendorNames = ["Om sai enterprise", "Vishal agensises", "Khan C&F", "N sons agensises", "Bharat distributors"];
+  for (let i = 1; i <= vendorCount; i++) {
+    vendors.push({
+      id: `vendor-${i}`,
+      name: i <= vendorNames.length ? vendorNames[i-1] : `PharmaDistro ${i}`,
+    });
+  }
+
+  // Generate Purchases
+  let purchaseIdCounter = 1;
+  products.forEach(product => {
+    // Determine a "best" price for this product to control margin loss
+    const bestPrice = product.sellingPrice * (Math.random() * 0.15 + 0.5); // 50-65% of selling
+
+    for (let i = 0; i < purchasesPerProduct; i++) {
+      const vendor = vendors[Math.floor(Math.random() * vendors.length)];
+      const date = new Date(Date.now() - Math.random() * 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Random date within last 2 years
+      const quantity = Math.floor(Math.random() * 150) + 10; // 10 to 160
+      
+      // Make most prices higher than the best price
+      const priceFluctuation = (Math.random() - 0.2) * 0.5; // Skew towards positive
+      let purchasePrice = bestPrice * (1 + priceFluctuation);
+      
+      // Randomly assign the best price to a purchase
+      if (i % 4 === 0) {
+          purchasePrice = bestPrice;
+      }
+
+      purchases.push({
+        id: `p-${purchaseIdCounter++}`,
+        productId: product.id,
+        vendorId: vendor.id,
+        date,
+        quantity,
+        purchasePrice: parseFloat(purchasePrice.toFixed(2)),
+      });
+    }
+  });
+
+  return { products, vendors, purchases };
+}
+
+
+export async function getAppData(): Promise<AppData> {
+  // We don't cache in this scenario to allow for regeneration on each request if needed,
+  // but for a real app, you'd re-enable caching.
+  // if (cache) {
+  //   return cache;
+  // }
+
+  const { products, vendors, purchases } = generateData();
 
   const productMap = new Map(products.map(p => [p.id, p]));
   const vendorMap = new Map(vendors.map(v => [v.id, v]));
@@ -36,23 +101,37 @@ export async function getAppData(): Promise<AppData> {
     const vendor = vendorMap.get(p.vendorId)!;
     const bestMarginData = bestMargins.get(p.productId)!;
     
-    // Handle cases where bestMarginData might not be found (though it should be)
     const bestPrice = bestMarginData ? bestMarginData.price : p.purchasePrice;
     const marginLoss = (p.purchasePrice - bestPrice) * p.quantity;
-    totalMarginLoss += marginLoss > 0 ? marginLoss : 0;
+    const finalMarginLoss = marginLoss > 0 ? marginLoss : 0;
     
     return {
       ...p,
       product,
       vendor,
-      marginLoss: marginLoss > 0 ? marginLoss : 0,
+      marginLoss: finalMarginLoss,
       isBestMargin: p.purchasePrice === bestPrice,
     };
   });
+  
+  // Calculate the actual total margin loss from generated data
+  const actualTotalMarginLoss = processedPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
+
+  // Scale the total margin loss to the target value
+  const targetTotalMarginLoss = 1500000;
+  const scalingFactor = targetTotalMarginLoss / actualTotalMarginLoss;
+
+  const finalProcessedPurchases = processedPurchases.map(p => ({
+      ...p,
+      marginLoss: p.marginLoss * scalingFactor
+  }));
+
+  totalMarginLoss = finalProcessedPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
+
 
   // Step 3: Create summaries
   const productsSummary: ProductSummary[] = products.map(product => {
-    const productPurchases = processedPurchases.filter(p => p.productId === product.id);
+    const productPurchases = finalProcessedPurchases.filter(p => p.productId === product.id);
     const totalMarginLoss = productPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     const totalMargin = productPurchases.reduce((acc,p) => acc + p.margin, 0);
     const bestMargin = bestMargins.get(product.id)?.margin || 0;
@@ -69,7 +148,7 @@ export async function getAppData(): Promise<AppData> {
   });
 
   const vendorsSummary = vendors.map(vendor => {
-    const vendorPurchases = processedPurchases.filter(p => p.vendorId === vendor.id);
+    const vendorPurchases = finalProcessedPurchases.filter(p => p.vendorId === vendor.id);
     const totalMarginLoss = vendorPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     return {
       id: vendor.id,
@@ -82,7 +161,7 @@ export async function getAppData(): Promise<AppData> {
   // Step 4: Margin Analysis Summary
   const startOfCurrentYear = startOfYear(new Date());
   const marginAnalysisSummary: MarginAnalysisProductSummary[] = products.map(product => {
-    const productPurchases = processedPurchases.filter(p => p.productId === product.id);
+    const productPurchases = finalProcessedPurchases.filter(p => p.productId === product.id);
     const purchasesYTD = productPurchases.filter(p => parseISO(p.date) >= startOfCurrentYear);
     
     const totalPurchaseCost = productPurchases.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
@@ -105,7 +184,7 @@ export async function getAppData(): Promise<AppData> {
     totalMarginLoss,
     productsSummary,
     vendorsSummary,
-    processedPurchases: processedPurchases.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()),
+    processedPurchases: finalProcessedPurchases.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()),
     products,
     vendors,
     marginAnalysisSummary,
