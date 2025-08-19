@@ -210,7 +210,10 @@ export async function getProductDetails(productId: string) {
     const productPurchases = data.processedPurchases.filter(p => p.productId === productId);
     const summary = data.productsSummary.find(p => p.id === productId);
 
-    return { product, purchases: productPurchases, summary };
+    const oneYearAgo = subYears(new Date(), 1);
+    const purchasesLastYear = productPurchases.filter(p => parseISO(p.date) >= oneYearAgo).length;
+
+    return { product, purchases: productPurchases, summary, purchasesLastYear };
 }
 
 export async function getVendorDetails(vendorId: string) {

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, Percent, ShoppingCart, Users } from "lucide-react";
+import { ArrowLeft, DollarSign, Percent, ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -24,7 +24,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound();
   }
 
-  const { product, purchases, summary } = details;
+  const { product, purchases, summary, purchasesLastYear } = details;
 
   return (
     <>
@@ -32,7 +32,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-            <Link href="/">
+            <Link href="/margin-analysis">
               <ArrowLeft className="h-4 w-4" />
               <span className="sr-only">Back</span>
             </Link>
@@ -42,10 +42,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </h1>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description={`Across ${summary?.purchaseCount} purchases`} icon={DollarSign} />
+            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description={`Across ${summary?.purchaseCount} total purchases`} icon={DollarSign} />
             <KpiCard title="Average Margin" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Average margin for this product" icon={Percent} />
             <KpiCard title="Best Margin Achieved" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin across all vendors" icon={Percent} />
-            <KpiCard title="Selling Price" value={formatCurrency(product.sellingPrice)} description="Current selling price" icon={DollarSign} />
+            <KpiCard title="Purchases (Last Year)" value={purchasesLastYear.toString()} description="Number of purchase orders" icon={ShoppingCart} />
         </div>
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <Card>

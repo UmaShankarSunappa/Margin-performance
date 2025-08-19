@@ -25,7 +25,8 @@ export default function ProductPurchasesTable({ purchases }: ProductPurchasesTab
             <TableRow>
             <TableHead>Vendor</TableHead>
             <TableHead className="text-right">Date</TableHead>
-            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-right">Quantity</TableHead>
+            <TableHead className="text-right">Cost Price</TableHead>
             <TableHead className="text-right">Margin %</TableHead>
             <TableHead className="text-right">Margin Loss</TableHead>
             </TableRow>
@@ -40,6 +41,7 @@ export default function ProductPurchasesTable({ purchases }: ProductPurchasesTab
                 {p.isBestMargin && <Badge variant="outline" className="ml-2 border-primary text-primary">Best Margin</Badge>}
                 </TableCell>
                 <TableCell className="text-right">{format(new Date(p.date), 'dd MMM yyyy')}</TableCell>
+                <TableCell className="text-right">{formatNumber(p.quantity)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(p.purchasePrice)}</TableCell>
                 <TableCell className="text-right">{formatNumber(p.margin)}%</TableCell>
                 <TableCell className={cn("text-right", p.marginLoss > 0 && "text-destructive")}>
