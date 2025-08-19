@@ -1,7 +1,7 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary } from "@/lib/types";
 import { parseISO, subYears, subDays, format, startOfYear } from 'date-fns';
 
-const products: Product[] = [
+const baseProducts: Product[] = [
     { id: "dolo-650", name: "Dolo-650", sellingPrice: 30.00 },
     { id: "paracetamol-500", name: "Paracetamol-500", sellingPrice: 20.00 },
     { id: "azithromycin-250", name: "Azithromycin-250", sellingPrice: 118.00 },
@@ -96,9 +96,28 @@ const products: Product[] = [
     { id: "ferinject-500", name: "Ferinject 500mg", sellingPrice: 3500.00 },
     { id: "decadron-injection", name: "Decadron Injection", sellingPrice: 20.00 },
     { id: "human-actrapid", name: "Human Actrapid Insulin", sellingPrice: 500.00 },
-    { id: "lantus-solostar", "name": "Lantus Solostar", "sellingPrice": 800.00 },
-    { id: "accu-chek-active", "name": "Accu-Chek Active Strips", "sellingPrice": 1000.00 }
+    { "id": "lantus-solostar", "name": "Lantus Solostar", "sellingPrice": 800.00 },
+    { "id": "accu-chek-active", "name": "Accu-Chek Active Strips", "sellingPrice": 1000.00 }
 ];
+
+function generateProducts(count: number): Product[] {
+    if (count <= baseProducts.length) {
+        return baseProducts.slice(0, count);
+    }
+    const additionalProducts: Product[] = [];
+    for (let i = baseProducts.length; i < count; i++) {
+        const baseProduct = baseProducts[i % baseProducts.length];
+        additionalProducts.push({
+            id: `product-${i + 1}`,
+            name: `Generated Product ${i + 1}`,
+            sellingPrice: baseProduct.sellingPrice * (0.8 + Math.random() * 0.4) // +/- 20% of base price
+        });
+    }
+    return [...baseProducts, ...additionalProducts];
+}
+
+const products: Product[] = generateProducts(98347);
+
 
 const baseVendors: Vendor[] = [
     { id: "om-sai-enterprise", name: "Om sai enterprise" },
@@ -147,7 +166,7 @@ function generateVendors(count: number): Vendor[] {
     return [...baseVendors, ...additionalVendors];
 }
 
-const vendors: Vendor[] = generateVendors(98347);
+const vendors: Vendor[] = generateVendors(167);
 
 
 function generatePurchases(): Purchase[] {
