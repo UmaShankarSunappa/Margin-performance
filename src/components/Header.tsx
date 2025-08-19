@@ -1,21 +1,33 @@
-import { AreaChart, BarChartHorizontal } from 'lucide-react';
+import { BarChartHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './ui/button';
 
+const MedPlusLogo = () => (
+    <svg width="120" height="40" viewBox="0 0 165 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="165" height="40" rx="8" fill="#D52B1E"/>
+        <text fill="white" fontFamily="Arial, sans-serif" fontSize="24" fontWeight="bold">
+            <tspan x="10" y="28">MedPlus</tspan>
+        </text>
+        <g transform="translate(125 8)">
+            <rect width="24" height="24" rx="4" fill="white"/>
+            <path d="M12 5V19M5 12H19" stroke="#009639" strokeWidth="3" strokeLinecap="round"/>
+        </g>
+    </svg>
+);
+
+
 export default function Header() {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <header className="sticky top-0 z-30 flex h-20 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:px-6">
         <div className="flex items-center gap-4">
             <Link
                 href="/"
                 className="flex items-center gap-2 text-lg font-semibold sm:text-base"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <AreaChart className="h-6 w-6" />
-                </div>
-                <span className="sr-only">MarginWise Telangana</span>
+                <MedPlusLogo />
+                <span className="sr-only">Purchase Margin Loss Dashboard – Telangana</span>
             </Link>
-            <h1 className="text-xl font-semibold">MarginWise Telangana</h1>
+            <h1 className="text-xl font-semibold">Purchase Margin Loss Dashboard – Telangana</h1>
         </div>
         <nav className="ml-auto flex items-center gap-2">
             <Button variant="outline" asChild>

@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'MarginWise Telangana',
+  title: 'Purchase Margin Loss Dashboard – Telangana',
   description: 'Analyze and optimize purchase margins in Telangana.',
 };
 
