@@ -25,9 +25,9 @@ export default function Header() {
                 className="flex items-center gap-2 text-lg font-semibold sm:text-base"
               >
                 <MedPlusLogo />
-                <span className="sr-only">Purchase Margin Loss Dashboard – Telangana</span>
+                <span className="sr-only">Margin Performance Dashboard -Telangana</span>
             </Link>
-            <h1 className="text-xl font-semibold">Purchase Margin Loss Dashboard – Telangana</h1>
+            <h1 className="text-xl font-semibold">Margin Performance Dashboard -Telangana</h1>
         </div>
         <nav className="ml-auto flex items-center gap-2">
             <Button variant="outline" asChild>

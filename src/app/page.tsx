@@ -37,15 +37,15 @@ export default async function Home() {
             icon={DollarSign}
           />
           <KpiCard
-            title="Products Tracked"
+            title="Total SKU's"
             value={data.products.length.toString()}
             description="Total unique products with purchases"
             icon={Package}
           />
           <KpiCard
-            title="Vendors Tracked"
+            title="Partners"
             value={data.vendors.length.toString()}
-            description="Total unique vendors in the system"
+            description="Total unique partners in the system"
             icon={Truck}
           />
         </div>
