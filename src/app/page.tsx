@@ -43,9 +43,9 @@ export default async function Home() {
             icon={Package}
           />
           <KpiCard
-            title="Partners"
+            title="Total Vendors"
             value={data.vendors.length.toString()}
-            description="Total unique partners in the system"
+            description="Total unique vendors in the system"
             icon={Truck}
           />
         </div>
