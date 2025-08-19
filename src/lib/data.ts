@@ -120,7 +120,7 @@ const vendors: Vendor[] = [
     { id: "intas-pharma", name: "Intas Pharmaceuticals" },
     { id: "wockhardt-ltd", name: "Wockhardt Ltd" },
     { id: "cadila-health", name: "Cadila Healthcare" },
-    { id: "medplus-dist", name: "MedPlus Mart" },
+    { id: "medplus-dist", name: "Om sai distributors" },
     { id: "apollo-pharmacy-dist", name: "Apollo Pharmacy" },
     { id: "wellness-forever", name: "Wellness Forever" },
     { id: "frank-ross", name: "Frank Ross Pharmacy" },
