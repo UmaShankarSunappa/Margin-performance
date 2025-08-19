@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, DollarSign, Percent, ShoppingCart, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -27,7 +27,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const { product, purchases, summary } = details;
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
+    <>
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center gap-4">
@@ -42,10 +42,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </h1>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description={`Across ${summary?.purchaseCount} purchases`} icon={ArrowLeft} />
-            <KpiCard title="Average Margin" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Average margin for this product" icon={ArrowLeft} />
-            <KpiCard title="Best Margin Achieved" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin across all vendors" icon={ArrowLeft} />
-            <KpiCard title="Selling Price" value={formatCurrency(product.sellingPrice)} description="Current selling price" icon={ArrowLeft} />
+            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description={`Across ${summary?.purchaseCount} purchases`} icon={DollarSign} />
+            <KpiCard title="Average Margin" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Average margin for this product" icon={Percent} />
+            <KpiCard title="Best Margin Achieved" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin across all vendors" icon={Percent} />
+            <KpiCard title="Selling Price" value={formatCurrency(product.sellingPrice)} description="Current selling price" icon={DollarSign} />
         </div>
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <Card>
@@ -68,6 +68,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </Card>
         </div>
       </main>
-    </div>
+    </>
   );
 }

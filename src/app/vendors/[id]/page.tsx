@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Truck } from "lucide-react";
+import { ArrowLeft, Package, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -26,7 +26,7 @@ export default async function VendorDetailPage({ params }: VendorDetailPageProps
   const { vendor, summary, productsSummary } = details;
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
+    <>
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center gap-4">
@@ -41,8 +41,8 @@ export default async function VendorDetailPage({ params }: VendorDetailPageProps
           </h1>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description={`Across ${summary?.productsPurchased} products`} icon={Truck} />
-             <KpiCard title="Products Supplied" value={summary?.productsPurchased.toString() || '0'} description="Unique products purchased from this vendor" icon={Truck} />
+             <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description={`Across ${summary?.productsPurchased} products`} icon={DollarSign} />
+             <KpiCard title="Products Supplied" value={summary?.productsPurchased.toString() || '0'} description="Unique products purchased from this vendor" icon={Package} />
         </div>
         <Card>
             <CardHeader>
@@ -56,6 +56,6 @@ export default async function VendorDetailPage({ params }: VendorDetailPageProps
             </CardContent>
         </Card>
       </main>
-    </div>
+    </>
   );
 }

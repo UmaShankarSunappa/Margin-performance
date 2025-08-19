@@ -50,6 +50,10 @@ export interface VendorProductSummary {
     bestOverallMargin: number;
 }
 
+export interface MarginAnalysisProductSummary extends ProductSummary {
+    marginLossPercentage: number;
+    vendorCount: number;
+}
 
 export interface AppData {
   totalMarginLoss: number;
@@ -58,4 +62,5 @@ export interface AppData {
   processedPurchases: ProcessedPurchase[];
   products: Product[];
   vendors: Vendor[];
+  marginAnalysisSummary: MarginAnalysisProductSummary[];
 }

@@ -26,7 +26,7 @@ export default async function Home() {
     .slice(0, 5);
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
+    <>
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -74,6 +74,6 @@ export default async function Home() {
             </Card>
         </div>
       </main>
-    </div>
+    </>
   );
 }
