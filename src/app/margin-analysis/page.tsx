@@ -11,15 +11,17 @@ import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import KpiCard from "@/components/dashboard/KPI";
-import { DollarSign, Percent, ShoppingCart, Users } from "lucide-react";
+import { DollarSign, Percent, Search, ShoppingCart, Users } from "lucide-react";
 import type { MarginAnalysisProductSummary } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Input } from '@/components/ui/input';
 
 // We need a client component to use hooks, but data fetching is async.
 // This is a common pattern to bridge the two.
 export default function MarginAnalysisPage() {
     const [summary, setSummary] = useState<MarginAnalysisProductSummary[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useState(() => {
         getAppData().then(data => {
@@ -27,12 +29,26 @@ export default function MarginAnalysisPage() {
         });
     });
 
+    const filteredSummary = summary.filter(product => 
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
         <>
             <Header />
             <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-                <div className="flex items-center">
+                <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">Product Margin Loss Analysis</h1>
+                </div>
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search for products..."
+                        className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
                 <Card>
                     <CardHeader>
@@ -41,7 +57,7 @@ export default function MarginAnalysisPage() {
                     <CardContent>
                         {summary.length > 0 ? (
                             <Accordion type="single" collapsible className="w-full">
-                                {summary.map((product) => (
+                                {filteredSummary.map((product) => (
                                     <AccordionItem value={product.id} key={product.id}>
                                         <AccordionTrigger className='hover:no-underline'>
                                             <div className="flex justify-between w-full pr-4">
@@ -67,6 +83,11 @@ export default function MarginAnalysisPage() {
                             </Accordion>
                         ) : (
                            <p>Loading analysis...</p>
+                        )}
+                         {filteredSummary.length === 0 && summary.length > 0 && (
+                            <div className="text-center py-10">
+                                <p className="text-muted-foreground">No products found matching your search.</p>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
