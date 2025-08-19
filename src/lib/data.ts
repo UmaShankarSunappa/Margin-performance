@@ -27,12 +27,37 @@ const products: Product[] = [
     { id: "ensure-400", name: "Ensure Powder 400g", sellingPrice: 650.00 },
     { id: "revital-h-30", name: "Revital H (30 caps)", sellingPrice: 310.00 },
     { id: "becosules-20", name: "Becosules (20 caps)", sellingPrice: 50.00 },
+    { id: "aspirin-75", name: "Aspirin 75mg", sellingPrice: 15.00 },
+    { id: "ibuprofen-400", name: "Ibuprofen 400mg", sellingPrice: 28.00 },
+    { id: "domperidone-10", name: "Domperidone 10mg", sellingPrice: 32.00 },
+    { id: "rantac-150", name: "Rantac 150mg", sellingPrice: 42.00 },
+    { id: "liv-52", name: "Himalaya Liv.52", sellingPrice: 125.00 },
+    { id: "digene-syrup", name: "Digene Syrup 200ml", sellingPrice: 88.00 },
+    { id: "pudin-hara", name: "Pudin Hara Pearls (10)", sellingPrice: 20.00 },
+    { id: "supradyn-15", name: "Supradyn (15 tabs)", sellingPrice: 55.00 },
+    { id: "neurobion-forte-30", name: "Neurobion Forte (30 tabs)", sellingPrice: 35.00 },
+    { id: "shelcal-500", name: "Shelcal 500mg (15 tabs)", sellingPrice: 110.00 },
+    { id: "telma-40", name: "Telma 40mg", sellingPrice: 150.00 },
+    { id: "amlong-5", name: "Amlong 5mg", sellingPrice: 65.00 },
+    { id: "ecosprin-75", name: "Ecosprin 75mg", sellingPrice: 10.00 },
+    { "id": "glycomet-500", "name": "Glycomet 500mg", "sellingPrice": 45.00 },
+    { "id": "janumet-50-1000", "name": "Janumet 50/1000", "sellingPrice": 350.00 },
+    { "id": "thyronorm-50", "name": "Thyronorm 50mcg", "sellingPrice": 130.00 },
+    { "id": "cremaffin-plus", "name": "Cremaffin Plus Syrup", "sellingPrice": 180.00 },
+    { "id": "meftal-spas", "name": "Meftal Spas", "sellingPrice": 50.00 },
+    { "id": "pampers-diapers", "name": "Pampers Diapers (M)", "sellingPrice": 699.00 },
+    { "id": "huggies-wipes", "name": "Huggies Wipes (80)", "sellingPrice": 250.00 },
+    { "id": "lactogen-1", "name": "Nestle Lactogen 1", "sellingPrice": 420.00 },
+    { "id": "cetaphil-lotion", "name": "Cetaphil Lotion 250ml", "sellingPrice": 550.00 },
+    { "id": "sebamed-soap", "name": "Sebamed Baby Soap", "sellingPrice": 150.00 },
+    { "id": "colgate-total", "name": "Colgate Total Toothpaste", "sellingPrice": 120.00 },
+    { "id": "listerine-250", "name": "Listerine Mouthwash 250ml", "sellingPrice": 165.00 }
 ];
 
 const vendors: Vendor[] = [
+    { id: "ss-pharma", name: "SS Pharma Distributors" },
     { id: "mehta-group", name: "Mehta Group" },
     { id: "svizera", name: "Svizera Health Remedies" },
-    { id: "ss-pharma", name: "SS Pharma Distributors" },
     { id: "sanghvi-pharma", name: "Sanghvi Pharma" },
     { id: "mahaveer-pharma", name: "Mahaveer Pharma" },
     { id: "sun-pharma-dist", name: "Sun Pharma Distributors" },
@@ -41,8 +66,22 @@ const vendors: Vendor[] = [
     { id: "zydus-health", name: "Zydus Healthcare" },
     { id: "reddy-labs-dist", name: "Dr. Reddy's Distribution" },
     { id: "torrent-pharma", name: "Torrent Pharma Logistics" },
-    { id: "mankind-pharma", name: "Mankind Pharma" }
+    { id: "mankind-pharma", name: "Mankind Pharma" },
+    { id: "glenmark-dist", name: "Glenmark Pharmaceuticals" },
+    { id: "alkem-labs", name: "Alkem Laboratories" },
+    { id: "aurobindo-pharma", name: "Aurobindo Pharma" },
+    { id: "piramal-health", name: "Piramal Healthcare" },
+    { id: "intas-pharma", name: "Intas Pharmaceuticals" },
+    { id: "wockhardt-ltd", name: "Wockhardt Ltd" },
+    { id: "cadila-health", name: "Cadila Healthcare" },
+    { id: "medplus-dist", name: "MedPlus Mart" },
+    { id: "apollo-pharmacy-dist", name: "Apollo Pharmacy" },
+    { id: "wellness-forever", name: "Wellness Forever" },
+    { id: "frank-ross", name: "Frank Ross Pharmacy" },
+    { id: "emami-dist", name: "Emami Group" },
+    { id: "dabur-dist", name: "Dabur India" }
 ];
+
 
 function generatePurchases(): Purchase[] {
     const generatedPurchases: Purchase[] = [];
