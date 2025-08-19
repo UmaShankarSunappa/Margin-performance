@@ -1,51 +1,96 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary } from "@/lib/types";
-import { parseISO, subYears } from 'date-fns';
+import { parseISO, subYears, subDays, format } from 'date-fns';
 
 const products: Product[] = [
-  { id: "dolo-650", name: "Dolo-650", sellingPrice: 30.00 },
-  { id: "paracetamol-500", name: "Paracetamol-500", sellingPrice: 20.00 },
-  { id: "azithromycin-250", name: "Azithromycin-250", sellingPrice: 118.00 },
-  { id: "vitamin-c-1000", name: "Vitamin-C 1000mg", sellingPrice: 45.00 },
-  { id: "ors-sachet", name: "ORS Sachet", sellingPrice: 22.00 },
+    { id: "dolo-650", name: "Dolo-650", sellingPrice: 30.00 },
+    { id: "paracetamol-500", name: "Paracetamol-500", sellingPrice: 20.00 },
+    { id: "azithromycin-250", name: "Azithromycin-250", sellingPrice: 118.00 },
+    { id: "vitamin-c-1000", name: "Vitamin-C 1000mg", sellingPrice: 45.00 },
+    { id: "ors-sachet", name: "ORS Sachet", sellingPrice: 22.00 },
+    { id: "amoxicillin-500", name: "Amoxicillin-500", sellingPrice: 85.00 },
+    { id: "cetirizine-10", name: "Cetirizine-10mg", sellingPrice: 25.00 },
+    { id: "omeprazole-20", name: "Omeprazole-20mg", sellingPrice: 60.00 },
+    { id: "losartan-50", name: "Losartan-50mg", sellingPrice: 75.00 },
+    { id: "metformin-500", name: "Metformin-500mg", sellingPrice: 40.00 },
+    { id: "atorvastatin-20", name: "Atorvastatin-20mg", sellingPrice: 95.00 },
+    { id: "salbutamol-inhaler", name: "Salbutamol Inhaler", sellingPrice: 150.00 },
+    { id: "crocin-advance", name: "Crocin Advance", sellingPrice: 35.00 },
+    { id: "benadryl-syrup", name: "Benadryl Syrup 150ml", sellingPrice: 120.00 },
+    { id: "vicks-vaporub", name: "Vicks Vaporub 50g", sellingPrice: 140.00 },
+    { id: "band-aid-100", name: "Band-Aid Strips (100)", sellingPrice: 100.00 },
+    { id: "dettol-250", name: "Dettol Antiseptic 250ml", sellingPrice: 180.00 },
+    { id: "savlon-200", name: "Savlon Antiseptic 200ml", sellingPrice: 170.00 },
+    { id: "moov-50", name: "Moov Ointment 50g", sellingPrice: 160.00 },
+    { id: "volini-gel-75", name: "Volini Gel 75g", sellingPrice: 210.00 },
+    { id: "horlicks-500", name: "Horlicks 500g Jar", sellingPrice: 250.00 },
+    { id: "protinex-400", name: "Protinex Powder 400g", sellingPrice: 600.00 },
+    { id: "ensure-400", name: "Ensure Powder 400g", sellingPrice: 650.00 },
+    { id: "revital-h-30", name: "Revital H (30 caps)", sellingPrice: 310.00 },
+    { id: "becosules-20", name: "Becosules (20 caps)", sellingPrice: 50.00 },
 ];
 
 const vendors: Vendor[] = [
-  { id: "medplus", name: "MedPlus" },
-  { id: "apollo", name: "Apollo Pharmacy" },
-  { id: "wellness-forever", name: "Wellness Forever" },
-  { id: "local-dist", name: "Local Distributors Inc." },
+    { id: "medplus", name: "MedPlus" },
+    { id: "apollo", name: "Apollo Pharmacy" },
+    { id: "wellness-forever", name: "Wellness Forever" },
+    { id: "local-dist-hyd", name: "Local Distributors Hyderabad" },
+    { id: "ss-pharma", name: "SS Pharma Distributors" },
+    { id: "reliance-retail", name: "Reliance Retail Pharma" },
+    { id: "noble-plus", name: "Noble Plus Pharmacy" },
+    { id: "frank-ross", name: "Frank Ross Pharmacy" },
+    { id: "emami-group", name: "Emami Group" },
+    { id: "mankind-pharma", name: "Mankind Pharma" },
+    { id: "sun-pharma-dist", name: "Sun Pharma Dist." },
+    { id: "cipla-logistics", name: "Cipla Logistics" },
 ];
 
-const purchases: Purchase[] = [
-  // Dolo-650
-  { id: "p1", productId: "dolo-650", vendorId: "medplus", date: "2023-10-15", quantity: 100, purchasePrice: 22.50 },
-  { id: "p2", productId: "dolo-650", vendorId: "apollo", date: "2023-11-20", quantity: 150, purchasePrice: 23.00 },
-  { id: "p3", productId: "dolo-650", vendorId: "local-dist", date: "2024-01-10", quantity: 200, purchasePrice: 21.00 }, // Best margin
-  { id: "p4", productId: "dolo-650", vendorId: "wellness-forever", date: "2024-03-05", quantity: 120, purchasePrice: 23.50 },
+function generatePurchases(): Purchase[] {
+    const generatedPurchases: Purchase[] = [];
+    const startDate = subYears(new Date(), 2);
+    let purchaseIdCounter = 1;
 
-  // Paracetamol-500
-  { id: "p5", productId: "paracetamol-500", vendorId: "apollo", date: "2023-10-25", quantity: 500, purchasePrice: 14.00 },
-  { id: "p6", productId: "paracetamol-500", vendorId: "medplus", date: "2023-12-18", quantity: 400, purchasePrice: 14.50 },
-  { id: "p7", productId: "paracetamol-500", vendorId: "local-dist", date: "2024-02-22", quantity: 600, purchasePrice: 13.50 }, // Best margin
-  { id: "p8", productId: "paracetamol-500", vendorId: "wellness-forever", date: "2024-04-12", quantity: 300, purchasePrice: 15.00 },
+    for (const product of products) {
+        // Ensure each product has a "best price" vendor
+        const bestVendorIndex = Math.floor(Math.random() * vendors.length);
+        const bestPrice = product.sellingPrice * (0.9 - Math.random() * 0.2); // 70-90% of selling price
 
-  // Azithromycin-250
-  { id: "p9", productId: "azithromycin-250", vendorId: "local-dist", date: "2023-11-30", quantity: 50, purchasePrice: 90.00 }, // Best margin
-  { id: "p10", productId: "azithromycin-250", vendorId: "medplus", date: "2024-01-25", quantity: 70, purchasePrice: 95.00 },
-  { id: "p11", productId: "azithromycin-250", vendorId: "apollo", date: "2024-03-15", quantity: 60, purchasePrice: 98.00 },
-  
-  // Vitamin-C 1000mg
-  { id: "p12", productId: "vitamin-c-1000", vendorId: "wellness-forever", date: "2023-12-05", quantity: 200, purchasePrice: 32.00 },
-  { id: "p13", productId: "vitamin-c-1000", vendorId: "medplus", date: "2024-02-01", quantity: 250, purchasePrice: 31.00 }, // Best margin
-  { id: "p14", productId: "vitamin-c-1000", vendorId: "apollo", date: "2024-04-10", quantity: 180, purchasePrice: 33.50 },
-  
-  // ORS Sachet
-  { id: "p15", productId: "ors-sachet", vendorId: "apollo", date: "2023-12-10", quantity: 1000, purchasePrice: 16.00 },
-  { id: "p16", productId: "ors-sachet", vendorId: "local-dist", date: "2024-01-20", quantity: 1200, purchasePrice: 15.50 }, // Best margin
-  { id: "p17", productId: "ors-sachet", vendorId: "medplus", date: "2024-04-01", quantity: 800, purchasePrice: 16.50 },
-  // Add one old purchase to test the 1-year filter
-  { id: "p18", productId: "dolo-650", vendorId: "medplus", date: "2022-01-15", quantity: 50, purchasePrice: 22.00 },
-];
+        // Generate purchases over the last 2 years
+        const totalDays = 365 * 2;
+        const numPurchases = 20 + Math.floor(Math.random() * 30); // 20 to 50 purchases per product
+
+        for (let i = 0; i < numPurchases; i++) {
+            const date = subDays(new Date(), Math.floor(Math.random() * totalDays));
+            
+            let vendorIndex = Math.floor(Math.random() * vendors.length);
+            let purchasePrice: number;
+
+            // Introduce some logic to occasionally get the best price
+            if (i % 4 === 0) { // 25% chance to be the best price vendor
+                vendorIndex = bestVendorIndex;
+                purchasePrice = bestPrice;
+            } else {
+                // Other vendors have a price between bestPrice and sellingPrice
+                purchasePrice = bestPrice + (product.sellingPrice - bestPrice) * (0.2 + Math.random() * 0.7);
+            }
+            
+            // Ensure price doesn't exceed selling price
+            purchasePrice = Math.min(purchasePrice, product.sellingPrice * 0.98);
+
+            generatedPurchases.push({
+                id: `p${purchaseIdCounter++}`,
+                productId: product.id,
+                vendorId: vendors[vendorIndex].id,
+                date: format(date, 'yyyy-MM-dd'),
+                quantity: 50 + Math.floor(Math.random() * 450), // Represents purchases for multiple stores
+                purchasePrice: parseFloat(purchasePrice.toFixed(2)),
+            });
+        }
+    }
+    return generatedPurchases;
+}
+
+const purchases: Purchase[] = generatePurchases();
+
 
 let cache: AppData | null = null;
 
@@ -78,7 +123,9 @@ export async function getAppData(): Promise<AppData> {
     const vendor = vendorMap.get(p.vendorId)!;
     const bestMarginData = bestMargins.get(p.productId)!;
     
-    const marginLoss = (p.purchasePrice - bestMarginData.price) * p.quantity;
+    // Handle cases where bestMarginData might not be found (though it should be)
+    const bestPrice = bestMarginData ? bestMarginData.price : p.purchasePrice;
+    const marginLoss = (p.purchasePrice - bestPrice) * p.quantity;
     totalMarginLoss += marginLoss > 0 ? marginLoss : 0;
     
     return {
@@ -86,7 +133,7 @@ export async function getAppData(): Promise<AppData> {
       product,
       vendor,
       marginLoss: marginLoss > 0 ? marginLoss : 0,
-      isBestMargin: p.purchasePrice === bestMarginData.price,
+      isBestMargin: p.purchasePrice === bestPrice,
     };
   });
 
@@ -189,7 +236,7 @@ export async function getVendorDetails(vendorId: string) {
             averageMargin,
             bestOverallMargin: productInfo?.bestMargin || 0
         };
-    });
+    }).sort((a, b) => a.productName.localeCompare(b.productName));
 
     return { vendor, summary, productsSummary: productsSummaryForVendor };
 }
