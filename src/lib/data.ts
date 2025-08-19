@@ -100,7 +100,7 @@ const products: Product[] = [
     { id: "accu-chek-active", "name": "Accu-Chek Active Strips", "sellingPrice": 1000.00 }
 ];
 
-const vendors: Vendor[] = [
+const baseVendors: Vendor[] = [
     { id: "om-sai-enterprise", name: "Om sai enterprise" },
     { id: "vishal-agencies", name: "Vishal agensises" },
     { id: "khan-cf", name: "Khan C&F" },
@@ -132,6 +132,22 @@ const vendors: Vendor[] = [
     { id: "netmeds-marketplace", name: "Netmeds Marketplace" },
     { id: "tata-1mg", name: "Tata 1mg" }
 ];
+
+function generateVendors(count: number): Vendor[] {
+    if (count <= baseVendors.length) {
+        return baseVendors.slice(0, count);
+    }
+    const additionalVendors: Vendor[] = [];
+    for (let i = baseVendors.length; i < count; i++) {
+        additionalVendors.push({
+            id: `vendor-${i + 1}`,
+            name: `Generated Distributor ${i + 1}`
+        });
+    }
+    return [...baseVendors, ...additionalVendors];
+}
+
+const vendors: Vendor[] = generateVendors(98347);
 
 
 function generatePurchases(): Purchase[] {
