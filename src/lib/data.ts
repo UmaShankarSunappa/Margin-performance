@@ -101,11 +101,11 @@ const products: Product[] = [
 ];
 
 const vendors: Vendor[] = [
-    { id: "vishal-agencies", name: "Vishal Agencies" },
-    { id: "om-sai-distributors", name: "OM sai distributors" },
-    { id: "om-sai-enterprise", name: "OM sai enterprise" },
-    { id: "km-sons", name: "KM sons" },
+    { id: "om-sai-enterprise", name: "Om sai enterprise" },
+    { id: "vishal-agencies", name: "Vishal agensises" },
     { id: "khan-cf", name: "Khan C&F" },
+    { id: "n-sons-agencies", name: "N sons agensises" },
+    { id: "bharat-distributors", name: "Bharat distributors" },
     { id: "sun-pharma-dist", name: "Sun Pharma Distributors" },
     { id: "cipla-logistics", name: "Cipla Logistics" },
     { id: "lupin-dist", name: "Lupin Distribution" },
