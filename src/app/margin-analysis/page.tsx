@@ -70,7 +70,7 @@ export default function MarginAnalysisPage() {
                                                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
                                                     <KpiCard title="Margin Loss %" value={`${formatNumber(product.marginLossPercentage)}%`} description="Total margin loss / total purchase cost" icon={Percent} />
                                                     <KpiCard title="Total Margin Loss" value={formatCurrency(product.totalMarginLoss)} description="Cumulative loss for this product" icon={DollarSign} />
-                                                    <KpiCard title="Purchases (Last Year)" value={product.purchaseCount.toString()} description="Number of purchase orders" icon={ShoppingCart} />
+                                                    <KpiCard title="Purchases (YTD)" value={product.purchaseCount.toString()} description="Number of purchase orders (Year-to-date)" icon={ShoppingCart} />
                                                     <KpiCard title="Vendor Count" value={product.vendorCount.toString()} description="Unique vendors for this product" icon={Users} />
                                                 </div>
                                                 <Button asChild>

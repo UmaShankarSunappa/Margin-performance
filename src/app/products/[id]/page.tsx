@@ -24,7 +24,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound();
   }
 
-  const { product, purchases, summary, purchasesLastYear } = details;
+  const { product, purchases, summary, purchasesYTD } = details;
 
   return (
     <>
@@ -45,7 +45,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description={`Across ${summary?.purchaseCount} total purchases`} icon={DollarSign} />
             <KpiCard title="Average Margin" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Average margin for this product" icon={Percent} />
             <KpiCard title="Best Margin Achieved" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin across all vendors" icon={Percent} />
-            <KpiCard title="Purchases (Last Year)" value={purchasesLastYear.toString()} description="Number of purchase orders" icon={ShoppingCart} />
+            <KpiCard title="Purchases (YTD)" value={purchasesYTD.toString()} description="Number of purchase orders (Year-to-date)" icon={ShoppingCart} />
         </div>
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <Card>

@@ -1,5 +1,5 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary } from "@/lib/types";
-import { parseISO, subYears, subDays, format } from 'date-fns';
+import { parseISO, subYears, subDays, format, startOfYear } from 'date-fns';
 
 const products: Product[] = [
     { id: "dolo-650", name: "Dolo-650", sellingPrice: 30.00 },
@@ -51,7 +51,53 @@ const products: Product[] = [
     { "id": "cetaphil-lotion", "name": "Cetaphil Lotion 250ml", "sellingPrice": 550.00 },
     { "id": "sebamed-soap", "name": "Sebamed Baby Soap", "sellingPrice": 150.00 },
     { "id": "colgate-total", "name": "Colgate Total Toothpaste", "sellingPrice": 120.00 },
-    { "id": "listerine-250", "name": "Listerine Mouthwash 250ml", "sellingPrice": 165.00 }
+    { "id": "listerine-250", "name": "Listerine Mouthwash 250ml", "sellingPrice": 165.00 },
+    { id: "strepsils", name: "Strepsils", sellingPrice: 10.00 },
+    { id: "vicks-action-500", name: "Vicks Action 500", sellingPrice: 40.00 },
+    { id: "combiflam", name: "Combiflam", sellingPrice: 40.00 },
+    { id: "disprin", name: "Disprin", sellingPrice: 10.00 },
+    { id: "gelusil", name: "Gelusil MPS", sellingPrice: 80.00 },
+    { id: "calpol-650", name: "Calpol 650", sellingPrice: 30.00 },
+    { id: "sinarest", name: "Sinarest", sellingPrice: 65.00 },
+    { id: "allegra-120", name: "Allegra 120mg", sellingPrice: 100.00 },
+    { id: "cheston-cold", name: "Cheston Cold", sellingPrice: 55.00 },
+    { id: "montair-lc", name: "Montair LC", sellingPrice: 175.00 },
+    { id: "pantop-d", name: "Pantop-D", sellingPrice: 120.00 },
+    { id: "zinetac-150", name: "Zinetac 150", sellingPrice: 45.00 },
+    { id: "novamox-500", name: "Novamox 500", sellingPrice: 90.00 },
+    { id: "taxim-o-200", name: "Taxim-O 200", sellingPrice: 110.00 },
+    { id: "oflox-200", name: "Oflox 200", sellingPrice: 85.00 },
+    { id: "norflox-400", name: "Norflox 400", sellingPrice: 70.00 },
+    { id: "clavam-625", name: "Clavam 625", sellingPrice: 220.00 },
+    { id: "rozin-10", name: "Rozin 10", sellingPrice: 105.00 },
+    { id: "storvas-10", name: "Storvas 10", sellingPrice: 100.00 },
+    { id: "losar-h", name: "Losar-H", sellingPrice: 95.00 },
+    { id: "amlokind-at", name: "Amlokind-AT", sellingPrice: 75.00 },
+    { id: "istamet-50-500", name: "Istamet 50/500", sellingPrice: 250.00 },
+    { id: "eltroxin-50", name: "Eltroxin 50mcg", sellingPrice: 135.00 },
+    { id: "duphalac-syrup", name: "Duphalac Syrup", sellingPrice: 250.00 },
+    { id: "drotin-ds", name: "Drotin-DS", sellingPrice: 70.00 },
+    { id: "mamy-poko-pants", name: "Mamy Poko Pants (L)", sellingPrice: 750.00 },
+    { id: "johnson-baby-oil", name: "Johnson's Baby Oil 200ml", sellingPrice: 200.00 },
+    { id: "nan-pro-1", name: "Nestle Nan Pro 1", sellingPrice: 450.00 },
+    { id: "aveeno-lotion", name: "Aveeno Lotion 354ml", sellingPrice: 850.00 },
+    { id: "himalaya-baby-wash", name: "Himalaya Baby Wash 200ml", sellingPrice: 180.00 },
+    { id: "sensodyne-toothpaste", name: "Sensodyne Toothpaste", sellingPrice: 150.00 },
+    { id: "oral-b-toothbrush", name: "Oral-B Toothbrush", sellingPrice: 60.00 },
+    { id: "glyaha-lotion", name: "Glyaha Lotion", sellingPrice: 350.00 },
+    { id: "acne-uv-gel", name: "Acne UV Gel SPF 50", sellingPrice: 700.00 },
+    { id: "betnovate-n", name: "Betnovate-N Cream", sellingPrice: 50.00 },
+    { id: "soframycin-skin-cream", name: "Soframycin Skin Cream", sellingPrice: 45.00 },
+    { id: "boroline", name: "Boroline Antiseptic Cream", sellingPrice: 85.00 },
+    { id: "itraconazole-200", name: "Itraconazole 200mg", sellingPrice: 250.00 },
+    { id: "fluconazole-150", name: "Fluconazole 150mg", sellingPrice: 25.00 },
+    { id: "levocet-m", name: "Levocet M", sellingPrice: 90.00 },
+    { id: "folvite-5mg", name: "Folvite 5mg", sellingPrice: 50.00 },
+    { id: "ferinject-500", name: "Ferinject 500mg", sellingPrice: 3500.00 },
+    { id: "decadron-injection", name: "Decadron Injection", sellingPrice: 20.00 },
+    { id: "human-actrapid", name: "Human Actrapid Insulin", sellingPrice: 500.00 },
+    { id: "lantus-solostar", "name": "Lantus Solostar", "sellingPrice": 800.00 },
+    { id: "accu-chek-active", "name": "Accu-Chek Active Strips", "sellingPrice": 1000.00 }
 ];
 
 const vendors: Vendor[] = [
@@ -79,7 +125,12 @@ const vendors: Vendor[] = [
     { id: "wellness-forever", name: "Wellness Forever" },
     { id: "frank-ross", name: "Frank Ross Pharmacy" },
     { id: "emami-dist", name: "Emami Group" },
-    { id: "dabur-dist", name: "Dabur India" }
+    { id: "dabur-dist", name: "Dabur India" },
+    { id: "himalaya-dist", name: "Himalaya Wellness" },
+    { id: "patanjali-dist", name: "Patanjali Ayurved" },
+    { id: "reliance-retail", name: "Reliance Retail Pharma" },
+    { id: "netmeds-marketplace", name: "Netmeds Marketplace" },
+    { id: "tata-1mg", name: "Tata 1mg" }
 ];
 
 
@@ -206,10 +257,10 @@ export async function getAppData(): Promise<AppData> {
   });
 
   // Step 4: Margin Analysis Summary
-  const oneYearAgo = subYears(new Date(), 1);
+  const startOfCurrentYear = startOfYear(new Date());
   const marginAnalysisSummary: MarginAnalysisProductSummary[] = products.map(product => {
     const productPurchases = processedPurchases.filter(p => p.productId === product.id);
-    const purchasesLastYear = productPurchases.filter(p => parseISO(p.date) >= oneYearAgo);
+    const purchasesYTD = productPurchases.filter(p => parseISO(p.date) >= startOfCurrentYear);
     
     const totalPurchaseCost = productPurchases.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
     const totalMarginLoss = productPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
@@ -220,7 +271,7 @@ export async function getAppData(): Promise<AppData> {
 
     return {
         ...productsSummary.find(ps => ps.id === product.id)!,
-        purchaseCount: purchasesLastYear.length,
+        purchaseCount: purchasesYTD.length,
         marginLossPercentage,
         vendorCount: vendorIds.size,
     };
@@ -249,10 +300,10 @@ export async function getProductDetails(productId: string) {
     const productPurchases = data.processedPurchases.filter(p => p.productId === productId);
     const summary = data.productsSummary.find(p => p.id === productId);
 
-    const oneYearAgo = subYears(new Date(), 1);
-    const purchasesLastYear = productPurchases.filter(p => parseISO(p.date) >= oneYearAgo).length;
+    const startOfCurrentYear = startOfYear(new Date());
+    const purchasesYTD = productPurchases.filter(p => parseISO(p.date) >= startOfCurrentYear).length;
 
-    return { product, purchases: productPurchases, summary, purchasesLastYear };
+    return { product, purchases: productPurchases, summary, purchasesYTD };
 }
 
 export async function getVendorDetails(vendorId: string) {
