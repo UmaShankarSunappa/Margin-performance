@@ -120,7 +120,6 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
   }
 
   // Step 2: Process filtered purchases to calculate margin loss
-  let totalMarginLoss = 0;
   const processedPurchases: ProcessedPurchase[] = filteredPurchases.map(p => {
     const product = productMap.get(p.productId)!;
     const vendor = vendorMap.get(p.vendorId)!;
@@ -141,22 +140,12 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
     };
   });
   
-  const actualTotalMarginLoss = processedPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
-
-  const targetTotalMarginLoss = filters.state || filters.city ? actualTotalMarginLoss : 1500000;
-  const scalingFactor = (actualTotalMarginLoss > 0) ? targetTotalMarginLoss / actualTotalMarginLoss : 0;
-
-  const finalProcessedPurchases = processedPurchases.map(p => ({
-      ...p,
-      marginLoss: p.marginLoss * scalingFactor
-  }));
-
-  totalMarginLoss = finalProcessedPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
+  const totalMarginLoss = processedPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
 
 
   // Step 3: Create summaries
   const productsSummary: ProductSummary[] = products.map(product => {
-    const productPurchases = finalProcessedPurchases.filter(p => p.productId === product.id);
+    const productPurchases = processedPurchases.filter(p => p.productId === product.id);
     if (productPurchases.length === 0) return null;
     
     const totalMarginLoss = productPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
@@ -181,7 +170,7 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
   }).filter((p): p is ProductSummary => p !== null);
 
   const vendorsSummary = vendors.map(vendor => {
-    const vendorPurchases = finalProcessedPurchases.filter(p => p.vendorId === vendor.id);
+    const vendorPurchases = processedPurchases.filter(p => p.vendorId === vendor.id);
     if(vendorPurchases.length === 0) return null;
 
     const totalMarginLoss = vendorPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
@@ -196,7 +185,7 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
   // Step 4: Margin Analysis Summary
   const startOfCurrentYear = startOfYear(new Date());
   const marginAnalysisSummary: MarginAnalysisProductSummary[] = products.map(product => {
-     const productPurchases = finalProcessedPurchases.filter(p => p.productId === product.id);
+     const productPurchases = processedPurchases.filter(p => p.productId === product.id);
     if (productPurchases.length === 0) return null;
 
     const purchasesYTD = productPurchases.filter(p => parseISO(p.date) >= startOfCurrentYear);
@@ -223,7 +212,7 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
     totalMarginLoss,
     productsSummary,
     vendorsSummary,
-    processedPurchases: finalProcessedPurchases.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()),
+    processedPurchases: processedPurchases.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()),
     products,
     vendors,
     marginAnalysisSummary,
