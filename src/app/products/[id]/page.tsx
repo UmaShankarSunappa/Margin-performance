@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, Percent, ShoppingCart } from "lucide-react";
+import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, User, ShoppingBag, Truck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -24,7 +24,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound();
   }
 
-  const { product, purchases, summary, purchasesYTD } = details;
+  const { product, purchases, summary } = details;
 
   return (
     <>
@@ -42,10 +42,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </h1>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description={`Across ${summary?.purchaseCount} total purchases`} icon={DollarSign} />
-            <KpiCard title="Average Margin" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Average margin for this product" icon={Percent} />
-            <KpiCard title="Best Margin Achieved" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin across all vendors" icon={Percent} />
-            <KpiCard title="Purchases (YTD)" value={purchasesYTD.toString()} description="Number of purchase orders (Year-to-date)" icon={ShoppingCart} />
+            <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of purchase transactions" icon={ShoppingCart} />
+            <KpiCard title="Total Quantity Purchased" value={formatNumber(summary?.totalQuantityPurchased || 0)} description="Cumulative units purchased" icon={ShoppingBag} />
+            <KpiCard title="Best Margin %" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin achieved" icon={TrendingUp} />
+            <KpiCard title="Worst Margin %" value={`${formatNumber(summary?.worstMargin || 0)}%`} description="Lowest margin recorded" icon={TrendingDown} />
+            <KpiCard title="Average Margin %" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Overall average margin" icon={Percent} />
+            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description="Cumulative margin loss" icon={DollarSign} />
+            <KpiCard title="Best Vendor" value={summary?.bestVendor?.name || 'N/A'} description={summary?.bestVendor ? 'Vendor with highest margin' : ''} icon={Truck} />
+            <KpiCard title="Latest Purchase Price" value={formatCurrency(summary?.latestPurchasePrice || 0)} description="Most recent purchase price" icon={DollarSign} />
         </div>
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <Card>

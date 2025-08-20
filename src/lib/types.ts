@@ -34,6 +34,10 @@ export interface ProductSummary {
   averageMargin: number;
   bestMargin: number;
   sellingPrice: number;
+  totalQuantityPurchased: number;
+  worstMargin: number;
+  bestVendor: { id: string; name: string } | null;
+  latestPurchasePrice: number | null;
 }
 
 export interface VendorSummary {

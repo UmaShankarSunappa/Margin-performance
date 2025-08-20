@@ -134,7 +134,9 @@ export async function getAppData(): Promise<AppData> {
     const productPurchases = finalProcessedPurchases.filter(p => p.productId === product.id);
     const totalMarginLoss = productPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     const totalMargin = productPurchases.reduce((acc,p) => acc + p.margin, 0);
-    const bestMargin = bestMargins.get(product.id)?.margin || 0;
+    const bestMarginPurchase = productPurchases.find(p => p.isBestMargin);
+    const sortedByDate = [...productPurchases].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+
 
     return {
       id: product.id,
@@ -143,7 +145,11 @@ export async function getAppData(): Promise<AppData> {
       totalMarginLoss,
       purchaseCount: productPurchases.length,
       averageMargin: productPurchases.length > 0 ? totalMargin / productPurchases.length : 0,
-      bestMargin,
+      bestMargin: bestMargins.get(product.id)?.margin || 0,
+      totalQuantityPurchased: productPurchases.reduce((acc, p) => acc + p.quantity, 0),
+      worstMargin: productPurchases.length > 0 ? Math.min(...productPurchases.map(p => p.margin)) : 0,
+      bestVendor: bestMarginPurchase ? {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name } : null,
+      latestPurchasePrice: sortedByDate.length > 0 ? sortedByDate[0].purchasePrice : null
     };
   });
 
@@ -170,9 +176,11 @@ export async function getAppData(): Promise<AppData> {
     const marginLossPercentage = totalPurchaseCost > 0 ? (totalMarginLoss / totalPurchaseCost) * 100 : 0;
 
     const vendorIds = new Set(productPurchases.map(p => p.vendorId));
+    
+    const baseSummary = productsSummary.find(ps => ps.id === product.id)!;
 
     return {
-        ...productsSummary.find(ps => ps.id === product.id)!,
+        ...baseSummary,
         purchaseCount: purchasesYTD.length,
         marginLossPercentage,
         vendorCount: vendorIds.size,
