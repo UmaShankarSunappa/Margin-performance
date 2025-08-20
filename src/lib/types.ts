@@ -40,6 +40,7 @@ export interface ProductSummary {
   worstMargin: number;
   bestVendor: { id: string; name: string } | null;
   latestPurchasePrice: number | null;
+  marginLossPercentage: number;
 }
 
 export interface VendorSummary {

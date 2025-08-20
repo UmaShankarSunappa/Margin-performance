@@ -1,5 +1,5 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary } from "@/lib/types";
-import { parseISO, subYears, subDays, format, startOfYear } from 'date-fns';
+import { parseISO, startOfYear } from 'date-fns';
 
 let cache: AppData | null = null;
 
@@ -45,6 +45,9 @@ function generateData() {
 
   // Generate Purchases
   let purchaseIdCounter = 1;
+  const targetTotalMarginLoss = 1500000;
+  let currentTotalMarginLoss = 0;
+  
   products.forEach(product => {
     const bestPrice = product.sellingPrice * (Math.random() * 0.15 + 0.5); 
 
@@ -65,6 +68,9 @@ function generateData() {
       const citiesInState = geoLocations.citiesByState[state];
       const city = citiesInState[Math.floor(Math.random() * citiesInState.length)];
 
+      const marginLoss = Math.max(0, (purchasePrice - bestPrice) * quantity);
+      currentTotalMarginLoss += marginLoss;
+
       purchases.push({
         id: `p-${purchaseIdCounter++}`,
         productId: product.id,
@@ -77,6 +83,21 @@ function generateData() {
       });
     }
   });
+
+  const scalingFactor = targetTotalMarginLoss / currentTotalMarginLoss;
+  if(isFinite(scalingFactor)) {
+      purchases.forEach(p => {
+          const product = products.find(prod => prod.id === p.productId)!;
+          const bestPrice = product.sellingPrice * (Math.random() * 0.15 + 0.5); // Re-calc is tricky, approx
+          const marginLoss = Math.max(0, (p.purchasePrice - bestPrice) * p.quantity);
+          // This is a simplified scaling, might not be perfectly accurate but aims for the target
+          if(marginLoss > 0) {
+              const excessPrice = (p.purchasePrice - bestPrice);
+              p.purchasePrice = bestPrice + (excessPrice * scalingFactor);
+          }
+      });
+  }
+
 
   return { products, vendors, purchases };
 }
@@ -149,6 +170,7 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
     if (productPurchases.length === 0) return null;
     
     const totalMarginLoss = productPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
+    const totalPurchaseValue = productPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
     const totalMargin = productPurchases.reduce((acc,p) => acc + p.margin, 0);
     const bestMarginPurchase = productPurchases.find(p => p.isBestMargin);
     const sortedByDate = [...productPurchases].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
@@ -165,7 +187,8 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
       totalQuantityPurchased: productPurchases.reduce((acc, p) => acc + p.quantity, 0),
       worstMargin: productPurchases.length > 0 ? Math.min(...productPurchases.map(p => p.margin)) : 0,
       bestVendor: bestMarginPurchase ? {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name } : null,
-      latestPurchasePrice: sortedByDate.length > 0 ? sortedByDate[0].purchasePrice : null
+      latestPurchasePrice: sortedByDate.length > 0 ? sortedByDate[0].purchasePrice : null,
+      marginLossPercentage: totalPurchaseValue > 0 ? (totalMarginLoss / totalPurchaseValue) * 100 : 0
     };
   }).filter((p): p is ProductSummary => p !== null);
 

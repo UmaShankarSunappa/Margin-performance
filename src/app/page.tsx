@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin } from "lucide-react";
+import { DollarSign, Package, Truck, MapPin, Percent } from "lucide-react";
 
 import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { AppData } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
+import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
 
 type Scope = 'pan-india' | 'state' | 'city';
 
@@ -86,8 +87,12 @@ export default function Home() {
     }
   };
 
-  const topProducts = data?.productsSummary
+  const topProductsByValue = data?.productsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
+    .slice(0, 5) ?? [];
+
+  const topProductsByPercentage = data?.productsSummary
+    .sort((a, b) => b.marginLossPercentage - a.marginLossPercentage)
     .slice(0, 5) ?? [];
     
   const topVendors = data?.vendorsSummary
@@ -186,13 +191,24 @@ export default function Home() {
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Top 5 Products by Margin Loss</CardTitle>
+                <CardTitle>Top 5 Products by Margin Loss (Value)</CardTitle>
                 <CardDescription>
                   Products with the highest margin loss compared to benchmark prices.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ProductMarginLossChart data={topProducts} />
+                <ProductMarginLossChart data={topProductsByValue} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Top 5 Products by Margin Loss (%)</CardTitle>
+                <CardDescription>
+                  Products with the highest margin loss percentage.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ProductMarginLossPercentageChart data={topProductsByPercentage} />
               </CardContent>
             </Card>
             <Card>
