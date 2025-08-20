@@ -42,6 +42,7 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [selectedValues, setSelectedValues] = React.useState<string[]>(defaultValue);
   const [open, setOpen] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     onValueChange(selectedValues);
@@ -55,7 +56,8 @@ export function MultiSelect({
     );
   };
 
-  const handleRemove = (value: string) => {
+  const handleRemove = (e: React.MouseEvent<HTMLButtonElement>, value: string) => {
+    e.stopPropagation();
     setSelectedValues((prev) => prev.filter((v) => v !== value));
   };
   
@@ -70,23 +72,29 @@ export function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn("w-full justify-between h-auto", className)}
+          onClick={() => setOpen(!open)}
         >
           <div className="flex gap-1 flex-wrap">
-            {selectedLabels.length > 0 ? (
-                selectedLabels.map((label, index) => (
-                    <Badge
-                        variant="secondary"
-                        key={index}
-                        className="mr-1"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemove(selectedValues[index]);
-                        }}
-                    >
-                        {label}
-                        <X className="ml-1 h-3 w-3" />
-                    </Badge>
-                ))
+            {selectedValues.length > 0 ? (
+                selectedValues.map((value) => {
+                    const label = options.find(option => option.value === value)?.label;
+                    return (
+                        <Badge
+                            variant="secondary"
+                            key={value}
+                            className="mr-1"
+                        >
+                            {label}
+                            <button
+                                className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={(e) => handleRemove(e, value)}
+                            >
+                                <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                            </button>
+                        </Badge>
+                    )
+                })
             ) : (
               <span className="text-muted-foreground">{placeholder}</span>
             )}
@@ -94,16 +102,22 @@ export function MultiSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-full p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search..." />
+          <CommandInput ref={inputRef} placeholder="Search..." />
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  onSelect={() => handleSelect(option.value)}
+                  onSelect={() => {
+                    handleSelect(option.value);
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                 >
                   <Check
                     className={cn(
