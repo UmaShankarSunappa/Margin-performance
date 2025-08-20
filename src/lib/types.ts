@@ -16,6 +16,8 @@ export interface Purchase {
   date: string;
   quantity: number;
   purchasePrice: number;
+  state: string;
+  city: string;
 }
 
 export interface ProcessedPurchase extends Purchase {
