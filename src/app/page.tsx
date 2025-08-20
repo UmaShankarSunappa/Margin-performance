@@ -20,24 +20,30 @@ import type { AppData } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
+import { MultiSelect } from "@/components/ui/multi-select";
+
 
 type Scope = 'pan-india' | 'state' | 'city';
 
 export default function Home() {
   const [data, setData] = useState<AppData | null>(null);
   const [scope, setScope] = useState<Scope>('pan-india');
-  const [selectedState, setSelectedState] = useState<string>('Telangana');
+  const [selectedStates, setSelectedStates] = useState<string[]>(['Telangana']);
   const [selectedCity, setSelectedCity] = useState<string>('Hyderabad');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Memoize the state options to prevent re-renders of the multi-select component
+  const stateOptions = geoLocations.states.map(s => ({ value: s, label: s }));
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       let filter = {};
       if (scope === 'state') {
-        filter = { state: selectedState };
+        filter = { states: selectedStates };
       } else if (scope === 'city') {
-        filter = { city: selectedCity, state: findStateForCity(selectedCity) };
+        const stateForCity = findStateForCity(selectedCity);
+        filter = { city: selectedCity, states: stateForCity ? [stateForCity] : [] };
       }
       const appData = await getAppData(filter);
       setData(appData);
@@ -45,40 +51,44 @@ export default function Home() {
     };
 
     fetchData();
-  }, [scope, selectedState, selectedCity]);
+  }, [scope, selectedStates, selectedCity]);
 
   const handleScopeChange = (value: Scope) => {
     setScope(value);
-    if (value === 'state' && !selectedState) {
-      setSelectedState(geoLocations.states[0]);
+    if (value === 'state' && selectedStates.length === 0) {
+      setSelectedStates([geoLocations.states[0]]);
     } else if (value === 'city' && !selectedCity) {
-      setSelectedCity(geoLocations.citiesByState[geoLocations.states[0]][0])
+      // Find the first city of the first state
+      const firstState = geoLocations.states[0];
+      const firstCity = geoLocations.citiesByState[firstState][0];
+      setSelectedStates([firstState]);
+      setSelectedCity(firstCity);
     }
   };
 
-  const handleStateChange = (value: string) => {
-    setSelectedState(value);
-    // Reset city when state changes to avoid invalid combinations
+  const handleStateForCityChange = (value: string) => {
+    setSelectedStates([value]);
     setSelectedCity(geoLocations.citiesByState[value][0]);
   };
-
+  
   const findStateForCity = (city: string) => {
     for (const state in geoLocations.citiesByState) {
         if (geoLocations.citiesByState[state].includes(city)) {
             return state;
         }
     }
-    return '';
+    return null;
   }
   
   const getCitiesForSelectedState = () => {
-      return geoLocations.citiesByState[selectedState] || [];
+      // In city-wise scope, we only allow one state to be selected to pick a city from.
+      return geoLocations.citiesByState[selectedStates[0]] || [];
   }
 
   const getDashboardTitle = () => {
     switch (scope) {
       case 'state':
-        return `Dashboard for ${selectedState}`;
+        return `Dashboard for ${selectedStates.join(', ')}`;
       case 'city':
         return `Dashboard for ${selectedCity}`;
       case 'pan-india':
@@ -130,21 +140,18 @@ export default function Home() {
             </Select>
 
             {scope === 'state' && (
-              <Select onValueChange={setSelectedState} value={selectedState}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Select State" />
-                </SelectTrigger>
-                <SelectContent>
-                  {geoLocations.states.map(state => (
-                    <SelectItem key={state} value={state}>{state}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <MultiSelect
+                    options={stateOptions}
+                    onValueChange={setSelectedStates}
+                    defaultValue={selectedStates}
+                    placeholder="Select states..."
+                    className="w-full sm:w-[250px]"
+                />
             )}
 
             {scope === 'city' && (
               <>
-                 <Select onValueChange={handleStateChange} value={selectedState}>
+                 <Select onValueChange={handleStateForCityChange} value={selectedStates[0]}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Select State" />
                     </SelectTrigger>
@@ -181,7 +188,7 @@ export default function Home() {
             description="Total unique products with purchases"
             icon={Package}
           />
-          <KpiCard
+           <KpiCard
             title="Total Vendors"
             value={data.vendors.length.toString()}
             description="Total unique vendors in the system"

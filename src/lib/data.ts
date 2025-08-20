@@ -1,7 +1,5 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, VendorSummary } from "@/lib/types";
 import { parseISO, startOfYear } from 'date-fns';
-
-let cache: AppData | null = null;
 
 export const geoLocations = {
     states: ["Karnataka", "Tamil Nadu", "Telangana", "Maharashtra", "West Bengal", "Odisha"],
@@ -49,16 +47,20 @@ function generateData() {
   let currentTotalMarginLoss = 0;
   
   products.forEach(product => {
-    const bestPrice = product.sellingPrice * (Math.random() * 0.15 + 0.5); 
+    // Determine a best price for this product, which all other prices will be compared against.
+    const bestPrice = product.sellingPrice * (Math.random() * 0.15 + 0.5); // 50% to 65% of selling price
 
     for (let i = 0; i < purchasesPerProduct; i++) {
       const vendor = vendors[Math.floor(Math.random() * vendors.length)];
+      // Generate purchase date within the last 2 years
       const date = new Date(Date.now() - Math.random() * 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const quantity = Math.floor(Math.random() * 150) + 10;
       
-      const priceFluctuation = (Math.random() - 0.2) * 0.5;
+      // Fluctuate the price, making sure it's generally higher than the best price
+      const priceFluctuation = (Math.random() - 0.2) * 0.5; // -10% to +40% fluctuation
       let purchasePrice = bestPrice * (1 + priceFluctuation);
       
+      // Ensure about 1 in 4 purchases hits the best price
       if (i % 4 === 0) {
           purchasePrice = bestPrice;
       }
@@ -84,19 +86,20 @@ function generateData() {
     }
   });
 
+  // Scale the margin loss to approximate the target total loss
   const scalingFactor = targetTotalMarginLoss / currentTotalMarginLoss;
-  if(isFinite(scalingFactor)) {
-      purchases.forEach(p => {
-          const product = products.find(prod => prod.id === p.productId)!;
-          const bestPrice = product.sellingPrice * (Math.random() * 0.15 + 0.5); // Re-calc is tricky, approx
-          const marginLoss = Math.max(0, (p.purchasePrice - bestPrice) * p.quantity);
-          // This is a simplified scaling, might not be perfectly accurate but aims for the target
-          if(marginLoss > 0) {
-              const excessPrice = (p.purchasePrice - bestPrice);
-              p.purchasePrice = bestPrice + (excessPrice * scalingFactor);
-          }
-      });
-  }
+  purchases.forEach(p => {
+      const product = products.find(prod => prod.id === p.productId)!;
+      // This is a simplification; in a real scenario, bestPrice would be pre-calculated and stored.
+      const bestPrice = product.sellingPrice * (Math.random() * 0.15 + 0.5); 
+      const marginLoss = Math.max(0, (p.purchasePrice - bestPrice) * p.quantity);
+      
+      if(marginLoss > 0 && isFinite(scalingFactor)) {
+          const excessPrice = (p.purchasePrice - bestPrice);
+          // Scale the "excess" part of the price to adjust the total margin loss
+          p.purchasePrice = bestPrice + (excessPrice * scalingFactor);
+      }
+  });
 
 
   return { products, vendors, purchases };
@@ -106,14 +109,14 @@ function generateData() {
 const fullDataset = generateData();
 
 
-export async function getAppData(filters: { state?: string; city?: string } = {}): Promise<AppData> {
+export async function getAppData(filters: { states?: string[]; city?: string } = {}): Promise<AppData> {
   let filteredPurchases = fullDataset.purchases;
 
-  if (filters.state && !filters.city) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
-  } else if (filters.city) {
+  if (filters.states && filters.states.length > 0) {
+    filteredPurchases = fullDataset.purchases.filter(p => filters.states?.includes(p.state));
+  } else if (filters.city && filters.states && filters.states.length > 0) {
     // If city is specified, state should also be specified for accuracy
-    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
+    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && filters.states?.includes(p.state));
   }
 
   // From the filtered purchases, find the unique products and vendors involved
@@ -127,6 +130,7 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
   const vendorMap = new Map(vendors.map(v => [v.id, v]));
 
   // Step 1: Calculate margin for each purchase and find best margin for each product *within the full dataset*
+  // This ensures the benchmark is always the absolute best price, regardless of filters.
   const allPurchasesWithMargin = fullDataset.purchases.map(purchase => {
     const product = fullDataset.products.find(p => p.id === purchase.productId)!;
     const margin = ((product.sellingPrice - purchase.purchasePrice) / product.sellingPrice) * 100;
@@ -192,7 +196,7 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
     };
   }).filter((p): p is ProductSummary => p !== null);
 
-  const vendorsSummary = vendors.map(vendor => {
+  const vendorsSummary: VendorSummary[] = vendors.map(vendor => {
     const vendorPurchases = processedPurchases.filter(p => p.vendorId === vendor.id);
     if(vendorPurchases.length === 0) return null;
 
@@ -244,11 +248,13 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
 
 
 export async function getProductDetails(productId: string) {
-    const data = await getAppData();
+    const data = await getAppData(); // This will get Pan-India by default
     const product = data.products.find(p => p.id === productId);
     if (!product) return null;
 
-    const productPurchases = data.processedPurchases.filter(p => p.productId === productId);
+    const allPurchases = (await getAppData()).processedPurchases;
+
+    const productPurchases = allPurchases.filter(p => p.productId === productId);
     const summary = data.productsSummary.find(p => p.id === productId);
 
     const startOfCurrentYear = startOfYear(new Date());
@@ -258,11 +264,12 @@ export async function getProductDetails(productId: string) {
 }
 
 export async function getVendorDetails(vendorId: string) {
-    const data = await getAppData();
+    const data = await getAppData(); // This will get Pan-India by default
     const vendor = data.vendors.find(v => v.id === vendorId);
     if (!vendor) return null;
     
-    const vendorPurchases = data.processedPurchases.filter(p => p.vendorId === vendorId);
+    const allPurchases = (await getAppData()).processedPurchases;
+    const vendorPurchases = allPurchases.filter(p => p.vendorId === vendorId);
     const summary = data.vendorsSummary.find(v => v.id === vendorId);
 
     const productIds = [...new Set(vendorPurchases.map(p => p.productId))];
