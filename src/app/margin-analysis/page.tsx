@@ -25,9 +25,11 @@ type Period = 'all' | '1m' | '3m' | '6m' | '1y';
 
 function MarginAnalysisContent() {
     const searchParams = useSearchParams();
-    const states = searchParams.get('states')?.split(',');
+    const scope = searchParams.get('scope');
+    const state = searchParams.get('state');
     const city = searchParams.get('city');
-    const state = searchParams.get('state'); // For city-wise
+    const cityState = searchParams.get('cityState');
+
 
     const [allPurchases, setAllPurchases] = useState<ProcessedPurchase[]>([]);
     const [summary, setSummary] = useState<MarginAnalysisProductSummary[]>([]);
@@ -36,14 +38,23 @@ function MarginAnalysisContent() {
     const [isLoading, setIsLoading] = useState(true);
 
     const filters = useMemo(() => {
-        let f: { states?: string[], city?: string, state?: string } = {};
-        if (states && states.length > 0) f.states = states;
-        if (city && state) f = { city, state };
+        let f: { state?: string, city?: string, cityState?: string } = {};
+        if (scope === 'state' && state) {
+            f.state = state;
+        } else if (scope === 'city' && city && cityState) {
+            f.city = city;
+            f.state = cityState; // Pass state for city filter
+        }
         return f;
-    }, [states, city, state]);
+    }, [scope, state, city, cityState]);
 
     useEffect(() => {
-        getAppData(filters).then(data => {
+        // Here we pass the correct structure to getAppData
+        getAppData({
+            state: filters.state,
+            city: filters.city,
+            // getAppData expects state for city, not cityState
+        }).then(data => {
             setAllPurchases(data.processedPurchases);
             setSummary(data.marginAnalysisSummary.sort((a,b) => b.totalMarginLoss - a.totalMarginLoss));
             setIsLoading(false);
@@ -116,11 +127,8 @@ function MarginAnalysisContent() {
       .sort((a,b) => b.totalMarginLoss - a.totalMarginLoss);
     
     const getPageTitle = () => {
-      if (city && state) return `Product Margin Loss Analysis for ${city}, ${state}`;
-      if (states && states.length > 0) {
-          if(states.length === 1) return `Product Margin Loss Analysis for ${states[0]}`;
-          return `Product Margin Loss Analysis for ${states.length} states`;
-      }
+      if (scope === 'city' && city && cityState) return `Product Margin Loss Analysis for ${city}, ${cityState}`;
+      if (scope === 'state' && state) return `Product Margin Loss Analysis for ${state}`;
       return 'Pan-India Product Margin Loss Analysis';
     }
 
