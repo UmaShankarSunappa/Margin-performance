@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { getProductDetails } from "@/lib/data";
 import ProductPriceTrendChart from "@/components/charts/ProductPriceTrendChart";
+import ProductMarginTrendChart from "@/components/charts/ProductMarginTrendChart";
 import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -62,16 +63,25 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                     <ProductPriceTrendChart data={purchases} />
                 </CardContent>
             </Card>
-            <Card className="flex flex-col">
+            <Card>
                 <CardHeader>
-                    <CardTitle>Purchase History</CardTitle>
-                    <CardDescription>All purchase records for {product.name}.</CardDescription>
+                    <CardTitle>Margin Trend</CardTitle>
+                    <CardDescription>Margin % fluctuation over time across all vendors.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex-grow">
-                    <ProductPurchasesTable purchases={purchases} />
+                <CardContent>
+                    <ProductMarginTrendChart data={purchases} />
                 </CardContent>
             </Card>
         </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Purchase History</CardTitle>
+                <CardDescription>All purchase records for {product.name}.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ProductPurchasesTable purchases={purchases} />
+            </CardContent>
+        </Card>
       </main>
     </>
   );
