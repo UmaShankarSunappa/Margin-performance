@@ -26,6 +26,9 @@ export interface ProcessedPurchase extends Purchase {
   margin: number;
   marginLoss: number;
   isBestMargin: boolean;
+  isOutlier: boolean;
+  benchmarkMargin: number;
+  modeMargin: number;
 }
 
 export interface ProductSummary {
@@ -42,6 +45,7 @@ export interface ProductSummary {
   worstVendor: { id: string; name: string } | null;
   latestPurchasePrice: number | null;
   marginLossPercentage: number;
+  modeMargin?: number;
 }
 
 export interface VendorSummary {

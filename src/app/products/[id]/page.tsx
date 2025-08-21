@@ -1,6 +1,7 @@
+'use client';
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, User, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, ShoppingBag, Truck, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,10 @@ import ProductMarginTrendChart from "@/components/charts/ProductMarginTrendChart
 import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import type { Product, ProcessedPurchase, ProductSummary } from "@/lib/types";
+import { useEffect, useState } from "react";
+import Loading from "@/app/loading";
+import { ModeAdjustmentDialog } from "@/components/dialogs/ModeAdjustmentDialog";
 
 type ProductDetailPageProps = {
   params: {
@@ -18,14 +23,35 @@ type ProductDetailPageProps = {
   };
 };
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
-  const details = await getProductDetails(params.id);
+export default function ProductDetailPage({ params }: ProductDetailPageProps) {
+  const [details, setDetails] = useState<{ product: Product; purchases: ProcessedPurchase[]; summary: ProductSummary | undefined; } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customModes, setCustomModes] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setIsLoading(true);
+    getProductDetails(params.id, customModes).then(data => {
+      setDetails(data);
+      setIsLoading(false);
+    });
+  }, [params.id, customModes]);
+
+  const handleModeSave = (newMode: number) => {
+    setCustomModes(prev => ({ ...prev, [params.id]: newMode }));
+    setIsModalOpen(false);
+  };
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   if (!details) {
     notFound();
   }
 
   const { product, purchases, summary } = details;
+  const nonOutlierPurchases = purchases.filter(p => !p.isOutlier);
 
   return (
     <>
@@ -41,14 +67,21 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {product.name}
           </h1>
+          <div className="ml-auto">
+            <Button variant="outline" onClick={() => setIsModalOpen(true)}>
+                <Edit className="mr-2" />
+                Adjust Mode
+            </Button>
+          </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of purchase transactions" icon={ShoppingCart} />
-            <KpiCard title="Total Quantity Purchased" value={formatNumber(summary?.totalQuantityPurchased || 0)} description="Cumulative units purchased" icon={ShoppingBag} />
-            <KpiCard title="Best Margin %" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin achieved" icon={TrendingUp} />
-            <KpiCard title="Worst Margin %" value={`${formatNumber(summary?.worstMargin || 0)}%`} description="Lowest margin recorded" icon={TrendingDown} />
-            <KpiCard title="Average Margin %" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Overall average margin" icon={Percent} />
-            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description="Cumulative margin loss" icon={DollarSign} />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of valid purchase transactions" icon={ShoppingCart} />
+            <KpiCard title="Total Quantity Purchased" value={formatNumber(summary?.totalQuantityPurchased || 0)} description="Cumulative units from valid purchases" icon={ShoppingBag} />
+            <KpiCard title="Best Margin %" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin (non-outlier)" icon={TrendingUp} />
+            <KpiCard title="Worst Margin %" value={`${formatNumber(summary?.worstMargin || 0)}%`} description="Lowest margin (non-outlier)" icon={TrendingDown} />
+            <KpiCard title="Average Margin %" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Overall average margin (non-outlier)" icon={Percent} />
+            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description="Cumulative margin loss (non-outlier)" icon={DollarSign} />
+            <KpiCard title="Mode Margin %" value={`${formatNumber(summary?.modeMargin || 0)}%`} description="Most frequent margin" icon={Percent} />
             <KpiCard title="Best Vendor" value={summary?.bestVendor?.name || 'N/A'} description={summary?.bestVendor ? 'Vendor with highest margin' : ''} icon={Truck} />
             <KpiCard title="Worst Vendor" value={summary?.worstVendor?.name || 'N/A'} description={summary?.worstVendor ? 'Vendor with lowest margin' : ''} icon={Truck} />
             <KpiCard title="Latest Purchase Price" value={formatCurrency(summary?.latestPurchasePrice || 0)} description="Most recent purchase price" icon={DollarSign} />
@@ -60,7 +93,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                     <CardDescription>Price fluctuation over time across all vendors.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ProductPriceTrendChart data={purchases} />
+                    <ProductPriceTrendChart data={nonOutlierPurchases} />
                 </CardContent>
             </Card>
             <Card>
@@ -69,20 +102,28 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                     <CardDescription>Margin % fluctuation over time across all vendors.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ProductMarginTrendChart data={purchases} />
+                    <ProductMarginTrendChart data={nonOutlierPurchases} />
                 </CardContent>
             </Card>
         </div>
         <Card>
             <CardHeader>
                 <CardTitle>Purchase History</CardTitle>
-                <CardDescription>All purchase records for {product.name}.</CardDescription>
+                <CardDescription>All purchase records for {product.name}. Outliers are marked and excluded from calculations.</CardDescription>
             </CardHeader>
             <CardContent>
                 <ProductPurchasesTable purchases={purchases} />
             </CardContent>
         </Card>
       </main>
+      
+      <ModeAdjustmentDialog
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleModeSave}
+        productName={product.name}
+        currentMode={summary?.modeMargin || 0}
+      />
     </>
   );
 }

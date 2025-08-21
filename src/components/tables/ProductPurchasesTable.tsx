@@ -12,6 +12,7 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 interface ProductPurchasesTableProps {
   purchases: ProcessedPurchase[];
@@ -33,19 +34,34 @@ export default function ProductPurchasesTable({ purchases }: ProductPurchasesTab
         </TableHeader>
         <TableBody>
             {purchases.map((p) => (
-            <TableRow key={p.id} className={cn(p.isBestMargin && "bg-primary/20")}>
+            <TableRow key={p.id} className={cn(
+                p.isBestMargin && !p.isOutlier && "bg-primary/20",
+                p.isOutlier && "bg-destructive/10 text-muted-foreground"
+            )}>
                 <TableCell>
-                <Link href={`/vendors/${p.vendorId}`} className="font-medium hover:underline">
-                    {p.vendor.name}
-                </Link>
-                {p.isBestMargin && <Badge variant="outline" className="ml-2 border-primary text-primary">Best Margin</Badge>}
+                    <Link href={`/vendors/${p.vendorId}`} className="font-medium hover:underline">
+                        {p.vendor.name}
+                    </Link>
+                    {p.isBestMargin && !p.isOutlier && <Badge variant="outline" className="ml-2 border-primary text-primary">Best Margin</Badge>}
+                    {p.isOutlier && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Badge variant="destructive" className="ml-2 cursor-help">Outlier</Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>This purchase margin ({formatNumber(p.margin)}%) is an outlier based on the mode ({formatNumber(p.modeMargin)}%) and was excluded from loss calculations.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
                 </TableCell>
                 <TableCell className="text-right">{format(new Date(p.date), 'dd MMM yyyy')}</TableCell>
                 <TableCell className="text-right">{formatNumber(p.quantity)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(p.purchasePrice)}</TableCell>
                 <TableCell className="text-right">{formatNumber(p.margin)}%</TableCell>
-                <TableCell className={cn("text-right", p.marginLoss > 0 && "text-destructive")}>
-                {formatCurrency(p.marginLoss)}
+                <TableCell className={cn("text-right", p.marginLoss > 0 && !p.isOutlier && "text-destructive")}>
+                    {p.isOutlier ? 'N/A' : formatCurrency(p.marginLoss)}
                 </TableCell>
             </TableRow>
             ))}
