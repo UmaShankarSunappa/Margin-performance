@@ -142,8 +142,8 @@ export default function Home() {
             {scope === 'state' && (
                 <MultiSelect
                     options={stateOptions}
+                    selected={selectedStates}
                     onValueChange={setSelectedStates}
-                    defaultValue={selectedStates}
                     placeholder="Select states..."
                     className="w-full sm:w-[250px]"
                 />

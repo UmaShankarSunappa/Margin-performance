@@ -28,7 +28,7 @@ export type OptionType = {
 
 interface MultiSelectProps {
   options: OptionType[];
-  defaultValue?: string[];
+  selected: string[];
   onValueChange: (value: string[]) => void;
   placeholder?: string;
   className?: string;
@@ -36,32 +36,23 @@ interface MultiSelectProps {
 
 export function MultiSelect({
   options,
-  defaultValue = [],
+  selected,
   onValueChange,
   placeholder = "Select options...",
   className,
 }: MultiSelectProps) {
-  const [selectedValues, setSelectedValues] = React.useState<string[]>(defaultValue);
   const [open, setOpen] = React.useState(false);
 
-  // This effect synchronizes the component's internal state
-  // with the defaultValue prop, which is controlled by the parent page.
-  React.useEffect(() => {
-    setSelectedValues(defaultValue);
-  }, [defaultValue]);
-
   const handleToggle = (value: string) => {
-    const newSelectedValues = selectedValues.includes(value)
-      ? selectedValues.filter((v) => v !== value)
-      : [...selectedValues, value];
-    setSelectedValues(newSelectedValues);
+    const newSelectedValues = selected.includes(value)
+      ? selected.filter((v) => v !== value)
+      : [...selected, value];
     onValueChange(newSelectedValues);
   };
 
   const handleRemove = (e: React.MouseEvent, value: string) => {
     e.stopPropagation();
-    const newSelectedValues = selectedValues.filter((v) => v !== value);
-    setSelectedValues(newSelectedValues);
+    const newSelectedValues = selected.filter((v) => v !== value);
     onValueChange(newSelectedValues);
   };
 
@@ -73,10 +64,11 @@ export function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn("w-full justify-between h-auto", className)}
+          onClick={() => setOpen(!open)}
         >
           <div className="flex gap-1 flex-wrap">
-            {selectedValues.length > 0 ? (
-                selectedValues.map((value) => {
+            {selected.length > 0 ? (
+                selected.map((value) => {
                     const label = options.find(option => option.value === value)?.label;
                     return (
                         <Badge
@@ -120,7 +112,7 @@ export function MultiSelect({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      selectedValues.includes(option.value)
+                      selected.includes(option.value)
                         ? "opacity-100"
                         : "opacity-0"
                     )}
