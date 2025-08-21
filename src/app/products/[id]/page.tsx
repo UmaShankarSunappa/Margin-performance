@@ -67,12 +67,6 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {product.name}
           </h1>
-          <div className="ml-auto">
-            <Button variant="outline" onClick={() => setIsModalOpen(true)}>
-                <Edit className="mr-2" />
-                Adjust Mode
-            </Button>
-          </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of valid purchase transactions" icon={ShoppingCart} />
@@ -107,9 +101,15 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             </Card>
         </div>
         <Card>
-            <CardHeader>
-                <CardTitle>Purchase History</CardTitle>
-                <CardDescription>All purchase records for {product.name}. Outliers are marked and excluded from calculations.</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Purchase History</CardTitle>
+                    <CardDescription>All purchase records for {product.name}. Outliers are marked and excluded from calculations.</CardDescription>
+                </div>
+                <Button variant="outline" onClick={() => setIsModalOpen(true)}>
+                    <Edit className="mr-2" />
+                    Adjust Mode
+                </Button>
             </CardHeader>
             <CardContent>
                 <ProductPurchasesTable purchases={purchases} />
