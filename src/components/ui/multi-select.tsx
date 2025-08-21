@@ -45,6 +45,7 @@ function MultiSelect({
   const [open, setOpen] = React.useState(false);
 
   const handleSelect = (value: string) => {
+    // This is now the single source of truth for updating the selection
     onChange(
       selected.includes(value)
         ? selected.filter((v) => v !== value)
@@ -107,7 +108,15 @@ function MultiSelect({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  onSelect={() => handleSelect(option.value)}
+                  onSelect={(currentValue) => {
+                    // Prevent the default onSelect behavior which closes the popover
+                    // We will handle the selection with our own onClick
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSelect(option.value)
+                  }}
                   style={{ cursor: 'pointer' }}
                 >
                   <Check
