@@ -89,13 +89,14 @@ function generateData() {
 const fullDataset = generateData();
 
 
-export async function getAppData(filters: { state?: string; city?: string } = {}): Promise<AppData> {
+export async function getAppData(filters: { states?: string[]; state?: string; city?: string } = {}): Promise<AppData> {
   let filteredPurchases = fullDataset.purchases;
 
-  if (filters.state && !filters.city) {
+  if (filters.states && filters.states.length > 0) {
+    filteredPurchases = fullDataset.purchases.filter(p => filters.states?.includes(p.state));
+  } else if (filters.state && !filters.city) {
     filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
   } else if (filters.city && filters.state) {
-    // If city is specified, state should also be specified for accuracy
     filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
   }
 

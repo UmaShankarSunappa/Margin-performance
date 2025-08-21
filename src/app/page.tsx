@@ -20,24 +20,26 @@ import type { AppData } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 type Scope = 'pan-india' | 'state' | 'city';
 
 export default function Home() {
   const [data, setData] = useState<AppData | null>(null);
-  const [scope, setScope] = useState<Scope>('pan-india');
-  const [selectedState, setSelectedState] = useState<string>('Telangana');
+  const [scope, setScope] = useState<Scope>('state');
+  const [selectedStates, setSelectedStates] = useState<string[]>(['Telangana']);
   const [selectedCity, setSelectedCity] = useState<string>('Hyderabad');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      let filter = {};
+      let filter: { states?: string[], city?: string, state?: string } = {};
       if (scope === 'state') {
-        filter = { state: selectedState };
+        filter = { states: selectedStates };
       } else if (scope === 'city') {
-        filter = { city: selectedCity, state: selectedState };
+        const stateForCity = findStateForCity(selectedCity);
+        filter = { city: selectedCity, state: stateForCity || selectedStates[0] };
       }
       const appData = await getAppData(filter);
       setData(appData);
@@ -45,15 +47,17 @@ export default function Home() {
     };
 
     fetchData();
-  }, [scope, selectedState, selectedCity]);
+  }, [scope, selectedStates, selectedCity]);
 
   const handleScopeChange = (value: Scope) => {
     setScope(value);
   };
   
   const handleStateChangeForCityScope = (state: string) => {
-      setSelectedState(state);
-      setSelectedCity(geoLocations.citiesByState[state][0]);
+      setSelectedStates([state]);
+      if (geoLocations.citiesByState[state] && geoLocations.citiesByState[state].length > 0) {
+        setSelectedCity(geoLocations.citiesByState[state][0]);
+      }
   }
 
   const findStateForCity = (city: string) => {
@@ -66,13 +70,19 @@ export default function Home() {
   }
   
   const getCitiesForSelectedState = () => {
-      return geoLocations.citiesByState[selectedState] || [];
+      return geoLocations.citiesByState[selectedStates[0]] || [];
   }
 
   const getDashboardTitle = () => {
     switch (scope) {
       case 'state':
-        return `Dashboard for ${selectedState}`;
+         if (selectedStates.length > 1) {
+          return `Dashboard for ${selectedStates.length} states`;
+        }
+        if (selectedStates.length === 1) {
+            return `Dashboard for ${selectedStates[0]}`;
+        }
+        return 'State-wise Dashboard'
       case 'city':
         return `Dashboard for ${selectedCity}`;
       case 'pan-india':
@@ -124,21 +134,17 @@ export default function Home() {
             </Select>
 
             {scope === 'state' && (
-              <Select onValueChange={setSelectedState} value={selectedState}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Select State" />
-                </SelectTrigger>
-                <SelectContent>
-                  {geoLocations.states.map(state => (
-                    <SelectItem key={state} value={state}>{state}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={geoLocations.states.map(s => ({ value: s, label: s }))}
+                selected={selectedStates}
+                onChange={setSelectedStates}
+                className="w-full sm:w-[250px]"
+              />
             )}
 
             {scope === 'city' && (
               <>
-                 <Select onValueChange={handleStateChangeForCityScope} value={selectedState}>
+                 <Select onValueChange={handleStateChangeForCityScope} value={selectedStates[0]}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Select State" />
                     </SelectTrigger>
