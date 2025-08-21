@@ -49,6 +49,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <KpiCard title="Average Margin %" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Overall average margin" icon={Percent} />
             <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description="Cumulative margin loss" icon={DollarSign} />
             <KpiCard title="Best Vendor" value={summary?.bestVendor?.name || 'N/A'} description={summary?.bestVendor ? 'Vendor with highest margin' : ''} icon={Truck} />
+            <KpiCard title="Worst Vendor" value={summary?.worstVendor?.name || 'N/A'} description={summary?.worstVendor ? 'Vendor with lowest margin' : ''} icon={Truck} />
             <KpiCard title="Latest Purchase Price" value={formatCurrency(summary?.latestPurchasePrice || 0)} description="Most recent purchase price" icon={DollarSign} />
         </div>
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">

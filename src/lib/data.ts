@@ -157,6 +157,9 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
     const totalPurchaseValue = productPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
     const totalMargin = productPurchases.reduce((acc,p) => acc + p.margin, 0);
     const bestMarginPurchase = productPurchases.find(p => p.isBestMargin);
+    const worstMarginPurchase = productPurchases.length > 0 
+      ? productPurchases.reduce((worst, current) => (current.margin < worst.margin ? current : worst), productPurchases[0])
+      : null;
     const sortedByDate = [...productPurchases].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
 
@@ -171,6 +174,7 @@ export async function getAppData(filters: { state?: string; city?: string } = {}
       totalQuantityPurchased: productPurchases.reduce((acc, p) => acc + p.quantity, 0),
       worstMargin: productPurchases.length > 0 ? Math.min(...productPurchases.map(p => p.margin)) : 0,
       bestVendor: bestMarginPurchase ? {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name } : null,
+      worstVendor: worstMarginPurchase ? { id: worstMarginPurchase.vendor.id, name: worstMarginPurchase.vendor.name } : null,
       latestPurchasePrice: sortedByDate.length > 0 ? sortedByDate[0].purchasePrice : null,
       marginLossPercentage: totalPurchaseValue > 0 ? (totalMarginLoss / totalPurchaseValue) * 100 : 0
     };
