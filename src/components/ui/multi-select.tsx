@@ -43,13 +43,12 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [selectedValues, setSelectedValues] = React.useState<string[]>(defaultValue);
   const [open, setOpen] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     onValueChange(selectedValues);
   }, [selectedValues, onValueChange]);
 
-  const handleSelect = (value: string) => {
+  const handleToggle = (value: string) => {
     setSelectedValues((prev) =>
       prev.includes(value)
         ? prev.filter((v) => v !== value)
@@ -57,13 +56,10 @@ export function MultiSelect({
     );
   };
 
-  const handleRemove = (e: React.MouseEvent<HTMLButtonElement>, value: string) => {
+  const handleRemove = (e: React.MouseEvent, value: string) => {
     e.stopPropagation();
     setSelectedValues((prev) => prev.filter((v) => v !== value));
   };
-  
-  const selectedLabels = selectedValues.map(value => options.find(option => option.value === value)?.label).filter(Boolean);
-
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -73,7 +69,6 @@ export function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn("w-full justify-between h-auto", className)}
-          onClick={() => setOpen(!open)}
         >
           <div className="flex gap-1 flex-wrap">
             {selectedValues.length > 0 ? (
@@ -105,16 +100,14 @@ export function MultiSelect({
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
         <Command>
-          <CommandInput ref={inputRef} placeholder="Search..." />
+          <CommandInput placeholder="Search..." />
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  onSelect={() => {
-                    handleSelect(option.value);
-                  }}
+                  onSelect={() => handleToggle(option.value)}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -138,4 +131,3 @@ export function MultiSelect({
     </Popover>
   );
 }
-
