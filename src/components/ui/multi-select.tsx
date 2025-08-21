@@ -53,6 +53,12 @@ function MultiSelect({
       onChange([]);
   }
 
+  const handleUnselect = (e: React.MouseEvent, value: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onChange((prev) => prev.filter((v) => v !== value));
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen} {...props}>
       <PopoverTrigger asChild>
@@ -60,7 +66,7 @@ function MultiSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+          className={cn("w-full justify-between h-auto", className)}
           onClick={() => setOpen(!open)}
         >
           <div className="flex gap-1 flex-wrap">
@@ -70,10 +76,7 @@ function MultiSelect({
                         variant="secondary"
                         key={value}
                         className="mr-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelect(value);
-                        }}
+                        onClick={(e) => handleUnselect(e, value)}
                     >
                     {options.find(o => o.value === value)?.label}
                     <X className="ml-1 h-3 w-3" />
@@ -99,6 +102,15 @@ function MultiSelect({
                   key={option.value}
                   onSelect={() => handleSelect(option.value)}
                   style={{ cursor: 'pointer' }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSelect(option.value)
+                  }}
                 >
                   <Check
                     className={cn(
@@ -114,8 +126,8 @@ function MultiSelect({
                 <CommandGroup>
                     <CommandItem
                         onSelect={() => onChange([])}
-                        style={{ cursor: 'pointer', color: 'red' }}
-                        className="text-center"
+                        style={{ cursor: 'pointer' }}
+                        className="flex items-center justify-center text-red-500"
                     >
                         Clear All
                     </CommandItem>
