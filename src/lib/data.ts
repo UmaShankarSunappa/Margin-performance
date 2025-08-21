@@ -43,8 +43,6 @@ function generateData() {
 
   // Generate Purchases
   let purchaseIdCounter = 1;
-  const targetTotalMarginLoss = 1500000;
-  let currentTotalMarginLoss = 0;
   
   products.forEach(product => {
     // Determine a best price for this product, which all other prices will be compared against.
@@ -70,9 +68,6 @@ function generateData() {
       const citiesInState = geoLocations.citiesByState[state];
       const city = citiesInState[Math.floor(Math.random() * citiesInState.length)];
 
-      const marginLoss = Math.max(0, (purchasePrice - bestPrice) * quantity);
-      currentTotalMarginLoss += marginLoss;
-
       purchases.push({
         id: `p-${purchaseIdCounter++}`,
         productId: product.id,
@@ -86,21 +81,6 @@ function generateData() {
     }
   });
 
-  // Scale the margin loss to approximate the target total loss
-  const scalingFactor = targetTotalMarginLoss / currentTotalMarginLoss;
-  purchases.forEach(p => {
-      const product = products.find(prod => prod.id === p.productId)!;
-      // This is a simplification; in a real scenario, bestPrice would be pre-calculated and stored.
-      const bestPrice = product.sellingPrice * (Math.random() * 0.15 + 0.5); 
-      const marginLoss = Math.max(0, (p.purchasePrice - bestPrice) * p.quantity);
-      
-      if(marginLoss > 0 && isFinite(scalingFactor)) {
-          const excessPrice = (p.purchasePrice - bestPrice);
-          // Scale the "excess" part of the price to adjust the total margin loss
-          p.purchasePrice = bestPrice + (excessPrice * scalingFactor);
-      }
-  });
-
 
   return { products, vendors, purchases };
 }
@@ -109,14 +89,14 @@ function generateData() {
 const fullDataset = generateData();
 
 
-export async function getAppData(filters: { states?: string[]; city?: string } = {}): Promise<AppData> {
+export async function getAppData(filters: { state?: string; city?: string } = {}): Promise<AppData> {
   let filteredPurchases = fullDataset.purchases;
 
-  if (filters.states && filters.states.length > 0) {
-    filteredPurchases = fullDataset.purchases.filter(p => filters.states?.includes(p.state));
-  } else if (filters.city && filters.states && filters.states.length > 0) {
+  if (filters.state && !filters.city) {
+    filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
+  } else if (filters.city && filters.state) {
     // If city is specified, state should also be specified for accuracy
-    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && filters.states?.includes(p.state));
+    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
   }
 
   // From the filtered purchases, find the unique products and vendors involved
