@@ -20,7 +20,6 @@ import type { AppData } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
-import { MultiSelect } from "@/components/ui/multi-select";
 
 
 type Scope = 'pan-india' | 'state' | 'city';
@@ -28,19 +27,16 @@ type Scope = 'pan-india' | 'state' | 'city';
 export default function Home() {
   const [data, setData] = useState<AppData | null>(null);
   const [scope, setScope] = useState<Scope>('pan-india');
-  const [selectedStates, setSelectedStates] = useState<string[]>(['Telangana']);
+  const [selectedState, setSelectedState] = useState<string>('Telangana');
   const [selectedCity, setSelectedCity] = useState<string>('Hyderabad');
   const [isLoading, setIsLoading] = useState(true);
-
-  // Memoize the state options to prevent re-renders of the multi-select component
-  const stateOptions = geoLocations.states.map(s => ({ value: s, label: s }));
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       let filter = {};
       if (scope === 'state') {
-        filter = { states: selectedStates };
+        filter = { states: [selectedState] };
       } else if (scope === 'city') {
         const stateForCity = findStateForCity(selectedCity);
         filter = { city: selectedCity, states: stateForCity ? [stateForCity] : [] };
@@ -51,23 +47,23 @@ export default function Home() {
     };
 
     fetchData();
-  }, [scope, selectedStates, selectedCity]);
+  }, [scope, selectedState, selectedCity]);
 
   const handleScopeChange = (value: Scope) => {
     setScope(value);
-    if (value === 'state' && selectedStates.length === 0) {
-      setSelectedStates([geoLocations.states[0]]);
+    if (value === 'state' && !selectedState) {
+        setSelectedState(geoLocations.states[0]);
     } else if (value === 'city' && !selectedCity) {
       // Find the first city of the first state
       const firstState = geoLocations.states[0];
       const firstCity = geoLocations.citiesByState[firstState][0];
-      setSelectedStates([firstState]);
+      setSelectedState(firstState);
       setSelectedCity(firstCity);
     }
   };
 
   const handleStateForCityChange = (value: string) => {
-    setSelectedStates([value]);
+    setSelectedState(value);
     setSelectedCity(geoLocations.citiesByState[value][0]);
   };
   
@@ -82,13 +78,13 @@ export default function Home() {
   
   const getCitiesForSelectedState = () => {
       // In city-wise scope, we only allow one state to be selected to pick a city from.
-      return geoLocations.citiesByState[selectedStates[0]] || [];
+      return geoLocations.citiesByState[selectedState] || [];
   }
 
   const getDashboardTitle = () => {
     switch (scope) {
       case 'state':
-        return `Dashboard for ${selectedStates.join(', ')}`;
+        return `Dashboard for ${selectedState}`;
       case 'city':
         return `Dashboard for ${selectedCity}`;
       case 'pan-india':
@@ -140,18 +136,21 @@ export default function Home() {
             </Select>
 
             {scope === 'state' && (
-                <MultiSelect
-                    options={stateOptions}
-                    selected={selectedStates}
-                    onValueChange={setSelectedStates}
-                    placeholder="Select states..."
-                    className="w-full sm:w-[250px]"
-                />
+                <Select onValueChange={setSelectedState} value={selectedState}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Select State" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {geoLocations.states.map(state => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             )}
 
             {scope === 'city' && (
               <>
-                 <Select onValueChange={handleStateForCityChange} value={selectedStates[0]}>
+                 <Select onValueChange={handleStateForCityChange} value={selectedState}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Select State" />
                     </SelectTrigger>
