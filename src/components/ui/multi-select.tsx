@@ -11,6 +11,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -18,6 +19,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { Separator } from './separator';
 
 export type MultiSelectOption = {
   value: string;
@@ -27,8 +29,9 @@ export type MultiSelectOption = {
 interface MultiSelectProps {
   options: MultiSelectOption[];
   selected: string[];
-  onChange: React.Dispatch<React.SetStateAction<string[]>>;
+  onChange: (selected: string[]) => void;
   className?: string;
+  placeholder?: string;
 }
 
 function MultiSelect({
@@ -36,27 +39,28 @@ function MultiSelect({
   selected,
   onChange,
   className,
+  placeholder = "Select options...",
   ...props
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
   const handleSelect = (value: string) => {
-    onChange((prev) =>
-      prev.includes(value)
-        ? prev.filter((v) => v !== value)
-        : [...prev, value]
+    onChange(
+      selected.includes(value)
+        ? selected.filter((v) => v !== value)
+        : [...selected, value]
     );
   };
-  
+
   const handleClear = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onChange([]);
-  }
+    e.stopPropagation();
+    onChange([]);
+  };
 
   const handleUnselect = (e: React.MouseEvent, value: string) => {
     e.preventDefault();
     e.stopPropagation();
-    onChange((prev) => prev.filter((v) => v !== value));
+    onChange(selected.filter((v) => v !== value));
   };
 
   return (
@@ -71,27 +75,30 @@ function MultiSelect({
         >
           <div className="flex gap-1 flex-wrap">
             {selected.length > 0 ? (
-                selected.map((value) => (
-                    <Badge
-                        variant="secondary"
-                        key={value}
-                        className="mr-1"
-                        onClick={(e) => handleUnselect(e, value)}
-                    >
-                    {options.find(o => o.value === value)?.label}
+              selected.map((value) => {
+                const option = options.find((o) => o.value === value);
+                return (
+                  <Badge
+                    variant="secondary"
+                    key={value}
+                    className="mr-1"
+                    onClick={(e) => handleUnselect(e, value)}
+                  >
+                    {option ? option.label : value}
                     <X className="ml-1 h-3 w-3" />
-                    </Badge>
-                ))
+                  </Badge>
+                );
+              })
             ) : (
-                <span>Select States...</span>
+              <span>{placeholder}</span>
             )}
           </div>
           {selected.length > 0 && (
-              <X className="h-4 w-4 shrink-0 opacity-50" onClick={handleClear} />
+            <X className="h-4 w-4 shrink-0 opacity-50" onClick={handleClear} />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
           <CommandInput placeholder="Search ..." />
           <CommandList>
@@ -102,36 +109,32 @@ function MultiSelect({
                   key={option.value}
                   onSelect={() => handleSelect(option.value)}
                   style={{ cursor: 'pointer' }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSelect(option.value)
-                  }}
                 >
                   <Check
                     className={cn(
                       'mr-2 h-4 w-4',
-                      selected.includes(option.value) ? 'opacity-100' : 'opacity-0'
+                      selected.includes(option.value)
+                        ? 'opacity-100'
+                        : 'opacity-0'
                     )}
                   />
                   {option.label}
                 </CommandItem>
               ))}
             </CommandGroup>
-             {selected.length > 0 && (
+            {selected.length > 0 && (
+              <>
+                <CommandSeparator />
                 <CommandGroup>
-                    <CommandItem
-                        onSelect={() => onChange([])}
-                        style={{ cursor: 'pointer' }}
-                        className="flex items-center justify-center text-red-500"
-                    >
-                        Clear All
-                    </CommandItem>
+                  <CommandItem
+                    onSelect={() => onChange([])}
+                    style={{ cursor: 'pointer' }}
+                    className="justify-center text-center"
+                  >
+                    Clear All
+                  </CommandItem>
                 </CommandGroup>
+              </>
             )}
           </CommandList>
         </Command>

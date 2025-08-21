@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -25,8 +25,9 @@ type Period = 'all' | '1m' | '3m' | '6m' | '1y';
 
 function MarginAnalysisContent() {
     const searchParams = useSearchParams();
-    const state = searchParams.get('state');
+    const states = searchParams.get('states')?.split(',');
     const city = searchParams.get('city');
+    const state = searchParams.get('state'); // For city-wise
 
     const [allPurchases, setAllPurchases] = useState<ProcessedPurchase[]>([]);
     const [summary, setSummary] = useState<MarginAnalysisProductSummary[]>([]);
@@ -34,17 +35,20 @@ function MarginAnalysisContent() {
     const [period, setPeriod] = useState<Period>('all');
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        let filter: { state?: string, city?: string } = {};
-        if (state) filter.state = state;
-        if (city) filter.city = city;
+    const filters = useMemo(() => {
+        let f: { states?: string[], city?: string, state?: string } = {};
+        if (states && states.length > 0) f.states = states;
+        if (city && state) f = { city, state };
+        return f;
+    }, [states, city, state]);
 
-        getAppData(filter).then(data => {
+    useEffect(() => {
+        getAppData(filters).then(data => {
             setAllPurchases(data.processedPurchases);
             setSummary(data.marginAnalysisSummary.sort((a,b) => b.totalMarginLoss - a.totalMarginLoss));
             setIsLoading(false);
         });
-    }, [state, city]);
+    }, [filters]);
 
     const handleDownload = () => {
         const dataToExport = filteredSummary.map(p => ({
@@ -113,7 +117,10 @@ function MarginAnalysisContent() {
     
     const getPageTitle = () => {
       if (city && state) return `Product Margin Loss Analysis for ${city}, ${state}`;
-      if (state) return `Product Margin Loss Analysis for ${state}`;
+      if (states && states.length > 0) {
+          if(states.length === 1) return `Product Margin Loss Analysis for ${states[0]}`;
+          return `Product Margin Loss Analysis for ${states.length} states`;
+      }
       return 'Pan-India Product Margin Loss Analysis';
     }
 

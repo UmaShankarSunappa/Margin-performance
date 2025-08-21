@@ -4,7 +4,7 @@ import { parseISO, startOfYear } from 'date-fns';
 export const geoLocations = {
     states: ["Karnataka", "Tamil Nadu", "Telangana", "Maharashtra", "West Bengal", "Odisha"],
     citiesByState: {
-        "Telangana": ["Hyderabad"],
+        "Telangana": ["Hyderabad", "Medak"],
         "Tamil Nadu": ["Chennai", "Madurai"],
         "Karnataka": ["Bengaluru", "Hubli"],
         "West Bengal": ["Kolkata", "Hooghly"],
@@ -89,13 +89,15 @@ function generateData() {
 const fullDataset = generateData();
 
 
-export async function getAppData(filters: { state?: string; city?: string } = {}): Promise<AppData> {
+export async function getAppData(filters: { states?: string[]; city?: string; state?: string } = {}): Promise<AppData> {
   let filteredPurchases = fullDataset.purchases;
 
-  if (filters.state && !filters.city) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
+  if (filters.states && filters.states.length > 0) {
+    filteredPurchases = fullDataset.purchases.filter(p => filters.states?.includes(p.state));
   } else if (filters.city && filters.state) {
     filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
+  } else if(filters.state) { // Handle single state selection (for city filter dependency)
+    filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
   }
 
   // From the filtered purchases, find the unique products and vendors involved

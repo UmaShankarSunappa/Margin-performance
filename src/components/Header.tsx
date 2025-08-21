@@ -20,15 +20,10 @@ const MedPlusLogo = () => (
 
 export default function Header() {
   const searchParams = useSearchParams();
-  const state = searchParams.get('state');
-  const city = searchParams.get('city');
-
+  
   const getMarginAnalysisLink = () => {
-    const params = new URLSearchParams();
-    if (state) params.set('state', state);
-    if (city) params.set('city', city);
-    
-    const queryString = params.toString();
+    // Forward all current search params to the margin analysis page
+    const queryString = searchParams.toString();
     return `/margin-analysis${queryString ? `?${queryString}` : ''}`;
   }
 

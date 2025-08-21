@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   Card,
@@ -17,9 +17,10 @@ import KpiCard from "@/components/dashboard/KPI";
 import ProductMarginLossChart from "@/components/charts/ProductMarginLossChart";
 import VendorMarginLossChart from "@/components/charts/VendorMarginLossChart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { AppData } from "@/lib/types";
+import type { AppData, Product, Vendor, ProcessedPurchase } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
+import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
 
 type Scope = 'pan-india' | 'state' | 'city';
@@ -33,24 +34,30 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Initialize state from URL or set defaults
-  const [scope, setScope] = useState<Scope>(() => (searchParams.get('scope') as Scope) || 'state');
-  const [selectedState, setSelectedState] = useState<string>(() => searchParams.get('state') || 'Telangana');
+  const [scope, setScope] = useState<Scope>(() => (searchParams.get('scope') as Scope) || 'pan-india');
+  const [selectedStates, setSelectedStates] = useState<string[]>(() => searchParams.get('states')?.split(',') || []);
+  const [selectedCityState, setSelectedCityState] = useState<string>(() => searchParams.get('state') || 'Telangana');
   const [selectedCity, setSelectedCity] = useState<string>(() => searchParams.get('city') || 'Hyderabad');
+
+  const stateOptions: MultiSelectOption[] = useMemo(() => 
+    geoLocations.states.map(s => ({ value: s, label: s })),
+  []);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       const params = new URLSearchParams(searchParams);
       
-      let filter: { state?: string, city?: string } = {};
-      const currentScope = params.get('scope') || scope;
-      const currentState = params.get('state') || selectedState;
-      const currentCity = params.get('city') || selectedCity;
+      let filter: { states?: string[], city?: string, state?: string } = {};
+      const currentScope = params.get('scope') as Scope || 'pan-india';
       
-      if (currentScope === 'state' && currentState) {
-        filter = { state: currentState };
-      } else if (currentScope === 'city' && currentCity && currentState) {
-        filter = { city: currentCity, state: currentState };
+      if (currentScope === 'state') {
+        const states = params.get('states');
+        if (states) filter.states = states.split(',');
+      } else if (currentScope === 'city') {
+        const city = params.get('city');
+        const state = params.get('state');
+        if (city && state) filter = { city, state };
       }
       
       const appData = await getAppData(filter);
@@ -59,15 +66,13 @@ export default function Home() {
     };
 
     fetchData();
-  }, [searchParams, scope, selectedState, selectedCity]);
+  }, [searchParams]);
 
   const updateUrlParams = (newParams: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(); // Start with fresh params
     Object.entries(newParams).forEach(([key, value]) => {
       if (value) {
         params.set(key, value);
-      } else {
-        params.delete(key);
       }
     });
     router.push(`${pathname}?${params.toString()}`);
@@ -77,44 +82,44 @@ export default function Home() {
     setScope(value);
     const newParams: Record<string, string | null> = { scope: value };
     if (value === 'pan-india') {
-      newParams.state = null;
-      newParams.city = null;
+      setSelectedStates([]);
     } else if (value === 'state') {
-      newParams.city = null;
-      newParams.state = selectedState; // keep current state
+      // No need to set default states, user will select
     } else { // city
-      newParams.state = selectedState;
-      newParams.city = selectedCity;
+       newParams.state = selectedCityState;
+       newParams.city = selectedCity;
     }
     updateUrlParams(newParams);
   };
+  
+  const handleStatesChange = (states: string[]) => {
+      setSelectedStates(states);
+      updateUrlParams({ scope: 'state', states: states.join(',') });
+  }
 
-  const handleStateChange = (state: string) => {
-    setSelectedState(state);
+  const handleCityStateChange = (state: string) => {
+    setSelectedCityState(state);
     const citiesForNewState = geoLocations.citiesByState[state] || [];
     const newCity = citiesForNewState.length > 0 ? citiesForNewState[0] : '';
     setSelectedCity(newCity);
-
-    const newParams: Record<string, string | null> = { state };
-    if (scope === 'city') {
-       newParams.city = newCity;
-    }
-    updateUrlParams(newParams);
+    updateUrlParams({ scope: 'city', state, city: newCity });
   };
 
   const handleCityChange = (city: string) => {
       setSelectedCity(city);
-      updateUrlParams({ city });
+      updateUrlParams({ scope: 'city', state: selectedCityState, city });
   }
   
   const getCitiesForSelectedState = () => {
-      return geoLocations.citiesByState[selectedState] || [];
+      return geoLocations.citiesByState[selectedCityState] || [];
   }
 
   const getDashboardTitle = () => {
     switch (scope) {
       case 'state':
-        return `Dashboard for ${selectedState}`;
+        if (selectedStates.length === 0) return 'Dashboard - Please select states';
+        if (selectedStates.length === 1) return `Dashboard for ${selectedStates[0]}`;
+        return `Dashboard for ${selectedStates.length} states`;
       case 'city':
         return `Dashboard for ${selectedCity}`;
       case 'pan-india':
@@ -166,21 +171,18 @@ export default function Home() {
             </Select>
 
             {scope === 'state' && (
-              <Select onValueChange={handleStateChange} value={selectedState}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                      <SelectValue placeholder="Select State" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      {geoLocations.states.map(state => (
-                          <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                  </SelectContent>
-              </Select>
+              <MultiSelect
+                options={stateOptions}
+                selected={selectedStates}
+                onChange={handleStatesChange}
+                className="w-full sm:w-[250px]"
+                placeholder="Select States..."
+              />
             )}
 
             {scope === 'city' && (
               <>
-                 <Select onValueChange={handleStateChange} value={selectedState}>
+                 <Select onValueChange={handleCityStateChange} value={selectedCityState}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Select State" />
                     </SelectTrigger>
