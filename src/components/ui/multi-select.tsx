@@ -44,21 +44,25 @@ export function MultiSelect({
   const [selectedValues, setSelectedValues] = React.useState<string[]>(defaultValue);
   const [open, setOpen] = React.useState(false);
 
+  // This effect synchronizes the component's internal state
+  // with the defaultValue prop, which is controlled by the parent page.
   React.useEffect(() => {
-    onValueChange(selectedValues);
-  }, [selectedValues, onValueChange]);
+    setSelectedValues(defaultValue);
+  }, [defaultValue]);
 
   const handleToggle = (value: string) => {
-    setSelectedValues((prev) =>
-      prev.includes(value)
-        ? prev.filter((v) => v !== value)
-        : [...prev, value]
-    );
+    const newSelectedValues = selectedValues.includes(value)
+      ? selectedValues.filter((v) => v !== value)
+      : [...selectedValues, value];
+    setSelectedValues(newSelectedValues);
+    onValueChange(newSelectedValues);
   };
 
   const handleRemove = (e: React.MouseEvent, value: string) => {
     e.stopPropagation();
-    setSelectedValues((prev) => prev.filter((v) => v !== value));
+    const newSelectedValues = selectedValues.filter((v) => v !== value);
+    setSelectedValues(newSelectedValues);
+    onValueChange(newSelectedValues);
   };
 
   return (
