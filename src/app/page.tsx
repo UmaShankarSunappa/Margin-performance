@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -7,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin, Percent } from "lucide-react";
+import { DollarSign, Package, Truck, MapPin } from "lucide-react";
 
 import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
@@ -24,39 +25,87 @@ import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginL
 type Scope = 'pan-india' | 'state' | 'city';
 
 export default function Home() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [data, setData] = useState<AppData | null>(null);
-  const [scope, setScope] = useState<Scope>('state');
-  const [selectedState, setSelectedState] = useState<string>('Telangana');
-  const [selectedCity, setSelectedCity] = useState<string>('Hyderabad');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize state from URL or set defaults
+  const [scope, setScope] = useState<Scope>(() => (searchParams.get('scope') as Scope) || 'state');
+  const [selectedState, setSelectedState] = useState<string>(() => searchParams.get('state') || 'Telangana');
+  const [selectedCity, setSelectedCity] = useState<string>(() => searchParams.get('city') || 'Hyderabad');
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      const params = new URLSearchParams(searchParams);
+      
       let filter: { state?: string, city?: string } = {};
-      if (scope === 'state') {
-        filter = { state: selectedState };
-      } else if (scope === 'city') {
-        filter = { city: selectedCity, state: selectedState };
+      const currentScope = params.get('scope') || scope;
+      const currentState = params.get('state') || selectedState;
+      const currentCity = params.get('city') || selectedCity;
+      
+      if (currentScope === 'state' && currentState) {
+        filter = { state: currentState };
+      } else if (currentScope === 'city' && currentCity && currentState) {
+        filter = { city: currentCity, state: currentState };
       }
+      
       const appData = await getAppData(filter);
       setData(appData);
       setIsLoading(false);
     };
 
     fetchData();
-  }, [scope, selectedState, selectedCity]);
+  }, [searchParams, scope, selectedState, selectedCity]);
+
+  const updateUrlParams = (newParams: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   const handleScopeChange = (value: Scope) => {
     setScope(value);
+    const newParams: Record<string, string | null> = { scope: value };
+    if (value === 'pan-india') {
+      newParams.state = null;
+      newParams.city = null;
+    } else if (value === 'state') {
+      newParams.city = null;
+      newParams.state = selectedState; // keep current state
+    } else { // city
+      newParams.state = selectedState;
+      newParams.city = selectedCity;
+    }
+    updateUrlParams(newParams);
   };
 
   const handleStateChange = (state: string) => {
     setSelectedState(state);
-    if (geoLocations.citiesByState[state] && geoLocations.citiesByState[state].length > 0) {
-      setSelectedCity(geoLocations.citiesByState[state][0]);
+    const citiesForNewState = geoLocations.citiesByState[state] || [];
+    const newCity = citiesForNewState.length > 0 ? citiesForNewState[0] : '';
+    setSelectedCity(newCity);
+
+    const newParams: Record<string, string | null> = { state };
+    if (scope === 'city') {
+       newParams.city = newCity;
     }
+    updateUrlParams(newParams);
   };
+
+  const handleCityChange = (city: string) => {
+      setSelectedCity(city);
+      updateUrlParams({ city });
+  }
   
   const getCitiesForSelectedState = () => {
       return geoLocations.citiesByState[selectedState] || [];
@@ -104,7 +153,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-            <Select onValueChange={(value: Scope) => handleScopeChange(value)} defaultValue={scope}>
+            <Select onValueChange={(value: Scope) => handleScopeChange(value)} value={scope}>
               <SelectTrigger className="w-full sm:w-[150px]">
                 <MapPin className="mr-2" />
                 <SelectValue placeholder="Select Scope" />
@@ -141,7 +190,7 @@ export default function Home() {
                     ))}
                     </SelectContent>
                 </Select>
-                <Select onValueChange={setSelectedCity} value={selectedCity}>
+                <Select onValueChange={handleCityChange} value={selectedCity}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Select City" />
                     </SelectTrigger>

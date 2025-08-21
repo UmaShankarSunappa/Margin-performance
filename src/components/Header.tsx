@@ -1,3 +1,5 @@
+'use client';
+import { useSearchParams } from 'next/navigation';
 import { BarChartHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './ui/button';
@@ -17,6 +19,20 @@ const MedPlusLogo = () => (
 
 
 export default function Header() {
+  const searchParams = useSearchParams();
+  const state = searchParams.get('state');
+  const city = searchParams.get('city');
+
+  const getMarginAnalysisLink = () => {
+    const params = new URLSearchParams();
+    if (state) params.set('state', state);
+    if (city) params.set('city', city);
+    
+    const queryString = params.toString();
+    return `/margin-analysis${queryString ? `?${queryString}` : ''}`;
+  }
+
+
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:px-6">
         <div className="flex items-center gap-4">
@@ -31,7 +47,7 @@ export default function Header() {
         </div>
         <nav className="ml-auto flex items-center gap-2">
             <Button variant="outline" asChild>
-                <Link href="/margin-analysis">
+                <Link href={getMarginAnalysisLink()}>
                     <BarChartHorizontal className="mr-2 h-4 w-4" />
                     Margin Analysis
                 </Link>
