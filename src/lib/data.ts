@@ -75,51 +75,50 @@ function generateData() {
   let purchaseIdCounter = 1;
   
   products.forEach(product => {
-      const commonMarginPercentage = (Math.random() * 15 + 10) / 100; // 10-25%
-      const commonPurchasePrice = product.sellingPrice * (1 - commonMarginPercentage);
+    const commonMarginPercentage = (Math.random() * 15 + 10) / 100; // 10-25%
+    const commonPurchasePrice = product.sellingPrice * (1 - commonMarginPercentage);
 
-      // Force an outlier for the first few products
-      let hasCreatedOutlier = false;
-      const shouldForceOutlier = parseInt(product.id.split('-')[1]) <= 3; // Force for SKU-1, SKU-2, SKU-3
+    // Force an outlier for the first few products
+    const isOutlierSku = parseInt(product.id.split('-')[1]) <= 3; // Force for SKU-1, SKU-2, SKU-3
+    
+    for (let i = 0; i < purchasesPerProduct; i++) {
+        const vendor = vendors[Math.floor(Math.random() * vendors.length)];
+        const date = new Date(Date.now() - Math.random() * 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const quantity = Math.floor(Math.random() * 150) + 10;
+        let purchasePrice;
+        
+        // This makes the LAST purchase for outlier SKUs a guaranteed, large outlier
+        if (isOutlierSku && i === purchasesPerProduct - 1) {
+            // This margin (e.g., 80%) will be very high compared to the common margin (10-25%)
+            const outlierMargin = 0.80; 
+            purchasePrice = product.sellingPrice * (1 - outlierMargin);
+        } else {
+            const randomFactor = Math.random();
+            if (randomFactor < 0.6) { // 60% chance of being the common price
+                purchasePrice = commonPurchasePrice;
+            } else if (randomFactor < 0.9) { // 30% chance of slight variation
+                purchasePrice = commonPurchasePrice * (1 + (Math.random() - 0.5) * 0.1); // +/- 5%
+            } else { // 10% chance of being a different, but not necessarily outlier price
+                purchasePrice = commonPurchasePrice * (1 - Math.random() * 0.15); // Price can be lower -> margin higher but likely not outlier
+            }
+        }
+        
+        const state = geoLocations.states[Math.floor(Math.random() * geoLocations.states.length)];
+        const citiesInState = geoLocations.citiesByState[state];
+        const city = citiesInState[Math.floor(Math.random() * citiesInState.length)];
 
-      for (let i = 0; i < purchasesPerProduct; i++) {
-          const vendor = vendors[Math.floor(Math.random() * vendors.length)];
-          const date = new Date(Date.now() - Math.random() * 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-          const quantity = Math.floor(Math.random() * 150) + 10;
-          let purchasePrice;
-
-          const randomFactor = Math.random();
-          // If we need to force an outlier and haven't yet, make this one an outlier.
-          if (shouldForceOutlier && !hasCreatedOutlier && i === purchasesPerProduct -1) {
-             // Let's create a margin of ~60-80%, which should be > 4 * M
-             const outlierMargin = (Math.random() * 20 + 60) / 100;
-             purchasePrice = product.sellingPrice * (1 - outlierMargin);
-             hasCreatedOutlier = true;
-          } else if (randomFactor < 0.6) { // 60% chance of being the common price
-              purchasePrice = commonPurchasePrice;
-          } else if (randomFactor < 0.9) { // 30% chance of slight variation
-              purchasePrice = commonPurchasePrice * (1 + (Math.random() - 0.5) * 0.1); // +/- 5%
-          } else { // 10% chance of being a different, but not necessarily outlier price
-              purchasePrice = commonPurchasePrice * (1 - Math.random() * 0.15); // Price can be lower -> margin higher but likely not outlier
-          }
-          
-          const state = geoLocations.states[Math.floor(Math.random() * geoLocations.states.length)];
-          const citiesInState = geoLocations.citiesByState[state];
-          const city = citiesInState[Math.floor(Math.random() * citiesInState.length)];
-
-          purchases.push({
-              id: `p-${purchaseIdCounter++}`,
-              productId: product.id,
-              vendorId: vendor.id,
-              date,
-              quantity,
-              purchasePrice: parseFloat(purchasePrice.toFixed(2)),
-              state,
-              city
-          });
-      }
-  });
-
+        purchases.push({
+            id: `p-${purchaseIdCounter++}`,
+            productId: product.id,
+            vendorId: vendor.id,
+            date,
+            quantity,
+            purchasePrice: parseFloat(purchasePrice.toFixed(2)),
+            state,
+            city
+        });
+    }
+});
 
   return { products, vendors, purchases };
 }
