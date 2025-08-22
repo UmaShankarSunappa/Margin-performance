@@ -131,8 +131,8 @@ export async function getAppData(filters: { state?: string; city?: string, cityS
   let filteredPurchases = fullDataset.purchases;
 
   // Correct filtering logic. Use cityState for city filtering.
-  if (filters.city && filters.cityState) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.cityState);
+  if (filters.city && filters.state) {
+    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
   } else if (filters.state) {
     filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
   }

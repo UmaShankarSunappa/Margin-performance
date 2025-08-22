@@ -52,16 +52,10 @@ export default function Home() {
       } else if (currentScope === 'city') {
         const city = params.get('city');
         const cityState = params.get('cityState');
-        if (city && cityState) filter = { city, cityState };
+        if (city && cityState) filter = { city, state: cityState };
       }
       
-      // The `getAppData` expects a `state` string, not `states` array.
-      const appData = await getAppData({
-          state: currentScope === 'state' ? filter.state : undefined,
-          city: currentScope === 'city' ? filter.city : undefined,
-          // Pass the state for city filtering as 'state' not 'cityState'
-          ...(currentScope === 'city' && { state: filter.cityState })
-      });
+      const appData = await getAppData(filter);
 
       setData(appData);
       setIsLoading(false);

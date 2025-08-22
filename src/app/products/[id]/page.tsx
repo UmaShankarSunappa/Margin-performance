@@ -47,7 +47,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
       f.state = state;
     } else if (scope === 'city' && city && cityState) {
       f.city = city;
-      f.cityState = cityState;
+      f.state = cityState;
     }
     return f;
   }, [searchParams]);

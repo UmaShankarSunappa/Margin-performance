@@ -2,7 +2,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { formatNumber } from "@/lib/utils";
 
 interface ChartData {
@@ -17,13 +17,11 @@ interface ProductMarginLossPercentageChartProps {
 
 export default function ProductMarginLossPercentageChart({ data }: ProductMarginLossPercentageChartProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const handleBarClick = (payload: any) => {
     if (payload && payload.activePayload && payload.activePayload[0]) {
       const productId = payload.activePayload[0].payload.id;
-      const params = new URLSearchParams(searchParams.toString());
-      router.push(`/products/${productId}?${params.toString()}`);
+      router.push(`/products/${productId}`);
     }
   };
 
