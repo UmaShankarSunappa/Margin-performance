@@ -76,3 +76,11 @@ export interface AppData {
   vendors: Vendor[];
   marginAnalysisSummary: MarginAnalysisProductSummary[];
 }
+
+
+export interface ProductDetails {
+  product: Product;
+  purchases: ProcessedPurchase[];
+  summary: ProductSummary | undefined;
+  panIndiaSummary?: ProductSummary;
+}

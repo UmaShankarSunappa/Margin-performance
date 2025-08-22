@@ -1,7 +1,7 @@
 'use client';
 import { notFound, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, ShoppingBag, Truck, Edit } from "lucide-react";
+import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, ShoppingBag, Truck, Edit, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -14,10 +14,11 @@ import ProductMarginTrendChart from "@/components/charts/ProductMarginTrendChart
 import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { Product, ProcessedPurchase, ProductSummary } from "@/lib/types";
+import type { Product, ProcessedPurchase, ProductSummary, ProductDetails } from "@/lib/types";
 import { useEffect, useState, useMemo } from "react";
 import Loading from "@/app/loading";
 import { ModeAdjustmentDialog } from "@/components/dialogs/ModeAdjustmentDialog";
+import { Separator } from "@/components/ui/separator";
 
 type ProductDetailPageProps = {
   params: {
@@ -27,16 +28,15 @@ type ProductDetailPageProps = {
 
 export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const searchParams = useSearchParams();
-  const [details, setDetails] = useState<{ product: Product; purchases: ProcessedPurchase[]; summary: ProductSummary | undefined; } | null>(null);
+  const [details, setDetails] = useState<ProductDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customModes, setCustomModes] = useState<Record<string, number>>({});
   
   const initialScope = searchParams.get('scope');
-  const [showPanIndia, setShowPanIndia] = useState(!initialScope || initialScope === 'pan-india');
+  const [showPanIndia, setShowPanIndia] = useState(false);
 
   const filters = useMemo(() => {
-    if (showPanIndia) return {};
     const scope = searchParams.get('scope');
     const state = searchParams.get('state');
     const city = searchParams.get('city');
@@ -50,15 +50,15 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
       f.state = cityState;
     }
     return f;
-  }, [searchParams, showPanIndia]);
+  }, [searchParams]);
 
   useEffect(() => {
     setIsLoading(true);
-    getProductDetails(params.id, filters, customModes).then(data => {
+    getProductDetails(params.id, filters, customModes, showPanIndia).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, customModes, filters]);
+  }, [params.id, customModes, filters, showPanIndia]);
 
   const handleModeSave = (newMode: number) => {
     setCustomModes(prev => ({ ...prev, [params.id]: newMode }));
@@ -79,10 +79,22 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     notFound();
   }
 
-  const { product, purchases, summary } = details;
+  const { product, purchases, summary, panIndiaSummary } = details;
   const nonOutlierPurchases = purchases.filter(p => !p.isOutlier);
   
-  const isFilterActive = initialScope && initialScope !== 'pan-india';
+  const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
+
+  const getPageTitle = () => {
+    if (!isFilterActive) return `Pan-India Analysis for ${product.name}`;
+    const state = searchParams.get('state') || searchParams.get('cityState');
+    const city = searchParams.get('city');
+    if(city) return `${product.name} - Analysis for ${city}, ${state}`;
+    if(state) return `${product.name} - Analysis for ${state}`;
+    return product.name;
+  }
+  
+  const maskVendor = panIndiaSummary && summary && panIndiaSummary.bestVendor?.id !== summary.bestVendor?.id;
+
 
   return (
     <>
@@ -95,9 +107,11 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
               <span className="sr-only">Back</span>
             </Link>
           </Button>
-          <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-            {product.name}
-          </h1>
+          <div className="flex-1">
+             <h1 className="shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
+                {getPageTitle()}
+             </h1>
+          </div>
           {isFilterActive && (
              <div className="flex items-center space-x-2 ml-auto">
                 <Switch 
@@ -105,10 +119,11 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                   checked={showPanIndia}
                   onCheckedChange={setShowPanIndia}
                 />
-                <Label htmlFor="pan-india-toggle">Show Pan-India Data</Label>
+                <Label htmlFor="pan-india-toggle">Compare Pan-India</Label>
               </div>
           )}
         </div>
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of valid purchase transactions" icon={ShoppingCart} />
             <KpiCard title="Total Quantity Purchased" value={formatNumber(summary?.totalQuantityPurchased || 0)} description="Cumulative units from valid purchases" icon={ShoppingBag} />
@@ -121,11 +136,39 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             <KpiCard title="Worst Vendor" value={summary?.worstVendor?.name || 'N/A'} description={summary?.worstVendor ? 'Vendor with lowest margin' : ''} icon={Truck} />
             <KpiCard title="Latest Purchase Price" value={formatCurrency(summary?.latestPurchasePrice || 0)} description="Most recent purchase price" icon={DollarSign} />
         </div>
+
+        {showPanIndia && panIndiaSummary && (
+          <>
+             <div className="flex items-center gap-4">
+                <Separator />
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Pan-India Comparison</h2>
+                <Separator />
+            </div>
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <KpiCard title="Total Purchases" value={formatNumber(panIndiaSummary.purchaseCount)} description="Pan-India valid purchase transactions" icon={ShoppingCart} />
+                <KpiCard title="Total Quantity" value={formatNumber(panIndiaSummary.totalQuantityPurchased)} description="Pan-India cumulative units purchased" icon={ShoppingBag} />
+                <KpiCard title="Best Margin %" value={`${formatNumber(panIndiaSummary.bestMargin)}%`} description="Pan-India highest margin" icon={TrendingUp} />
+                <KpiCard title="Worst Margin %" value={`${formatNumber(panIndiaSummary.worstMargin)}%`} description="Pan-India lowest margin" icon={TrendingDown} />
+                <KpiCard title="Average Margin %" value={`${formatNumber(panIndiaSummary.averageMargin)}%`} description="Pan-India average margin" icon={Percent} />
+                <KpiCard title="Total Margin Loss" value={formatCurrency(panIndiaSummary.totalMarginLoss)} description="Pan-India cumulative margin loss" icon={DollarSign} />
+                <KpiCard title="Mode Margin %" value={`${formatNumber(panIndiaSummary.modeMargin)}%`} description="Pan-India most frequent margin" icon={Percent} />
+                <KpiCard 
+                  title="Best Vendor" 
+                  value={maskVendor ? '***' : (panIndiaSummary.bestVendor?.name || 'N/A')} 
+                  description={maskVendor ? "Name hidden for privacy" : "Pan-India vendor with highest margin"} 
+                  icon={maskVendor ? Lock : Truck} 
+                />
+                <KpiCard title="Worst Vendor" value={panIndiaSummary.worstVendor?.name || 'N/A'} description="Pan-India vendor with lowest margin" icon={Truck} />
+                <KpiCard title="Latest Purchase Price" value={formatCurrency(panIndiaSummary.latestPurchasePrice || 0)} description="Pan-India most recent price" icon={DollarSign} />
+             </div>
+          </>
+        )}
+
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <Card>
                 <CardHeader>
                     <CardTitle>Purchase Price Trend</CardTitle>
-                    <CardDescription>Price fluctuation over time across all vendors.</CardDescription>
+                    <CardDescription>Price fluctuation over time (filtered view).</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ProductPriceTrendChart data={nonOutlierPurchases} />
@@ -134,7 +177,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             <Card>
                 <CardHeader>
                     <CardTitle>Margin Trend</CardTitle>
-                    <CardDescription>Margin % fluctuation over time across all vendors.</CardDescription>
+                    <CardDescription>Margin % fluctuation over time (filtered view).</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ProductMarginTrendChart data={nonOutlierPurchases} />
@@ -145,7 +188,9 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Purchase History</CardTitle>
-                    <CardDescription>All purchase records for {product.name}. Outliers are marked and excluded from calculations.</CardDescription>
+                    <CardDescription>
+                        Displaying purchase records for the selected scope. Pan-India comparison only affects KPIs above.
+                    </CardDescription>
                 </div>
                 <Button variant="outline" onClick={() => setIsModalOpen(true)}>
                     <Edit className="mr-2" />

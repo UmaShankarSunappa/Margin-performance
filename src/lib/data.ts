@@ -1,4 +1,4 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, VendorSummary } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, VendorSummary, ProductDetails } from "@/lib/types";
 import { parseISO, startOfYear } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -315,15 +315,34 @@ export async function getAppData(filters: { state?: string[] | string; city?: st
 }
 
 
-export async function getProductDetails(productId: string, filters: { state?: string; city?: string } = {}, customModes?: Record<string, number>) {
-    const data = await getAppData({ ...filters, customModes });
+export async function getProductDetails(
+    productId: string, 
+    filters: { state?: string; city?: string } = {}, 
+    customModes?: Record<string, number>,
+    getPanIndiaData: boolean = false
+): Promise<ProductDetails | null> {
     const product = fullDataset.products.find(p => p.id === productId);
     if (!product) return null;
 
-    const purchases = data.processedPurchases.filter(p => p.productId === productId);
-    const summary = data.productsSummary.find(p => p.id === productId);
+    // Get data for the filtered scope
+    const filteredData = await getAppData({ ...filters, customModes });
+    const filteredPurchases = filteredData.processedPurchases.filter(p => p.productId === productId);
+    const filteredSummary = filteredData.productsSummary.find(p => p.id === productId);
 
-    return { product, purchases, summary };
+    let panIndiaSummary: ProductSummary | undefined = undefined;
+
+    // If requested, get Pan-India data for comparison
+    if (getPanIndiaData) {
+        const panIndiaData = await getAppData({ customModes }); // No geo filters
+        panIndiaSummary = panIndiaData.productsSummary.find(p => p.id === productId);
+    }
+    
+    return { 
+        product, 
+        purchases: filteredPurchases, 
+        summary: filteredSummary, 
+        panIndiaSummary 
+    };
 }
 
 export async function getVendorDetails(vendorId: string) {
