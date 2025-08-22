@@ -1,7 +1,8 @@
+
 "use client";
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 
@@ -17,11 +18,13 @@ interface ProductMarginLossChartProps {
 
 export default function ProductMarginLossChart({ data }: ProductMarginLossChartProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleBarClick = (payload: any) => {
     if (payload && payload.activePayload && payload.activePayload[0]) {
       const productId = payload.activePayload[0].payload.id;
-      router.push(`/products/${productId}`);
+      const params = new URLSearchParams(searchParams);
+      router.push(`/products/${productId}?${params.toString()}`);
     }
   };
 
