@@ -67,8 +67,20 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
   const getBackLink = () => {
     const scope = searchParams.get('scope');
-    if (scope === 'state' || scope === 'city') return `/?${searchParams.toString()}`;
-    return '/margin-analysis';
+    const state = searchParams.get('state');
+    const city = searchParams.get('city');
+    const cityState = searchParams.get('cityState');
+
+    const params = new URLSearchParams();
+    if(scope) params.set('scope', scope);
+    if(state) params.set('state', state);
+    if(city) params.set('city', city);
+    if(cityState) params.set('cityState', cityState);
+    
+    const queryString = params.toString();
+
+    if (scope === 'state' || scope === 'city') return `/?${queryString}`;
+    return `/margin-analysis?${queryString}`;
   }
 
   if (isLoading) {
@@ -85,7 +97,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
 
   const getPageTitle = () => {
-    if (!isFilterActive) return `Pan-India Analysis for ${product.name}`;
+    if (!isFilterActive || showPanIndia) return `Analysis for ${product.name}`;
     const state = searchParams.get('state') || searchParams.get('cityState');
     const city = searchParams.get('city');
     if(city) return `${product.name} - Analysis for ${city}, ${state}`;
@@ -134,7 +146,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             <KpiCard title="Mode Margin %" value={`${formatNumber(summary?.modeMargin || 0)}%`} description="Most frequent margin" icon={Percent} />
             <KpiCard title="Best Vendor" value={summary?.bestVendor?.name || 'N/A'} description={summary?.bestVendor ? 'Vendor with highest margin' : ''} icon={Truck} />
             <KpiCard title="Worst Vendor" value={summary?.worstVendor?.name || 'N/A'} description={summary?.worstVendor ? 'Vendor with lowest margin' : ''} icon={Truck} />
-            <KpiCard title="Latest Purchase Price" value={formatCurrency(summary?.latestPurchasePrice || 0)} description="Most recent purchase price" icon={DollarSign} />
+            <KpiCard title="Margin Loss %" value={`${formatNumber(summary?.marginLossPercentage || 0)}%`} description="Total margin loss / total purchase cost" icon={Percent} />
         </div>
 
         {showPanIndia && panIndiaSummary && (
@@ -159,7 +171,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                   icon={maskVendor ? Lock : Truck} 
                 />
                 <KpiCard title="Worst Vendor" value={panIndiaSummary.worstVendor?.name || 'N/A'} description="Pan-India vendor with lowest margin" icon={Truck} />
-                <KpiCard title="Latest Purchase Price" value={formatCurrency(panIndiaSummary.latestPurchasePrice || 0)} description="Pan-India most recent price" icon={DollarSign} />
+                <KpiCard title="Margin Loss %" value={`${formatNumber(panIndiaSummary.marginLossPercentage || 0)}%`} description="Pan-India margin loss / total cost" icon={Percent} />
              </div>
           </>
         )}
