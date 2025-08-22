@@ -23,7 +23,7 @@ export default function ProductMarginLossChart({ data }: ProductMarginLossChartP
   const handleBarClick = (payload: any) => {
     if (payload && payload.activePayload && payload.activePayload[0]) {
       const productId = payload.activePayload[0].payload.id;
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(searchParams.toString());
       router.push(`/products/${productId}?${params.toString()}`);
     }
   };

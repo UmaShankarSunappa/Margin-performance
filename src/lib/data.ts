@@ -1,4 +1,4 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary } from "@/lib/types";
 import { parseISO, startOfYear } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -130,9 +130,9 @@ const fullDataset = generateData();
 export async function getAppData(filters: { state?: string; city?: string, cityState?: string, customModes?: Record<string, number> } = {}): Promise<AppData> {
   let filteredPurchases = fullDataset.purchases;
 
-  // Correct filtering logic
-  if (filters.city && filters.state) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
+  // Correct filtering logic. Use cityState for city filtering.
+  if (filters.city && filters.cityState) {
+    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.cityState);
   } else if (filters.state) {
     filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
   }
@@ -238,7 +238,6 @@ export async function getAppData(filters: { state?: string; city?: string, cityS
     
     const bestMarginPurchase = nonOutlierPurchases.sort((a,b) => b.margin - a.margin)[0];
     const worstMarginPurchase = nonOutlierPurchases.sort((a,b) => a.margin - b.margin)[0];
-    const sortedByDate = [...productPurchases].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     
     return {
       id: product.id,
@@ -252,7 +251,6 @@ export async function getAppData(filters: { state?: string; city?: string, cityS
       worstMargin: worstMarginPurchase.margin,
       bestVendor: {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name },
       worstVendor: { id: worstMarginPurchase.vendor.id, name: worstMarginPurchase.vendor.name },
-      latestPurchasePrice: sortedByDate.length > 0 ? sortedByDate[0].purchasePrice : null,
       marginLossPercentage: totalPurchaseValue > 0 ? (totalMarginLoss / totalPurchaseValue) * 100 : 0,
       modeMargin: modeMargin,
     };

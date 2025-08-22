@@ -42,12 +42,12 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
     
-    let f: { state?: string, city?: string } = {};
+    let f: { state?: string; city?: string, cityState?: string } = {};
     if (scope === 'state' && state) {
       f.state = state;
     } else if (scope === 'city' && city && cityState) {
       f.city = city;
-      f.state = cityState;
+      f.cityState = cityState;
     }
     return f;
   }, [searchParams]);
@@ -79,6 +79,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     
     const queryString = params.toString();
 
+    // If we came from a filtered dashboard, go back there. Otherwise, go to margin analysis.
     if (scope === 'state' || scope === 'city') return `/?${queryString}`;
     return `/margin-analysis?${queryString}`;
   }
