@@ -45,7 +45,7 @@ export interface ProductSummary {
   worstVendor: { id: string; name: string } | null;
   latestPurchasePrice: number | null;
   marginLossPercentage: number;
-  modeMargin?: number;
+  modeMargin: number;
 }
 
 export interface VendorSummary {

@@ -75,9 +75,12 @@ function generateData() {
   let purchaseIdCounter = 1;
   
   products.forEach(product => {
-      // Create a more realistic margin distribution for mode calculation
       const commonMarginPercentage = (Math.random() * 15 + 10) / 100; // 10-25%
       const commonPurchasePrice = product.sellingPrice * (1 - commonMarginPercentage);
+
+      // Force an outlier for the first few products
+      let hasCreatedOutlier = false;
+      const shouldForceOutlier = parseInt(product.id.split('-')[1]) <= 3; // Force for SKU-1, SKU-2, SKU-3
 
       for (let i = 0; i < purchasesPerProduct; i++) {
           const vendor = vendors[Math.floor(Math.random() * vendors.length)];
@@ -86,12 +89,18 @@ function generateData() {
           let purchasePrice;
 
           const randomFactor = Math.random();
-          if (randomFactor < 0.6) { // 60% chance of being the common price
+          // If we need to force an outlier and haven't yet, make this one an outlier.
+          if (shouldForceOutlier && !hasCreatedOutlier && i === purchasesPerProduct -1) {
+             // Let's create a margin of ~60-80%, which should be > 4 * M
+             const outlierMargin = (Math.random() * 20 + 60) / 100;
+             purchasePrice = product.sellingPrice * (1 - outlierMargin);
+             hasCreatedOutlier = true;
+          } else if (randomFactor < 0.6) { // 60% chance of being the common price
               purchasePrice = commonPurchasePrice;
           } else if (randomFactor < 0.9) { // 30% chance of slight variation
-              purchasePrice = commonPurchasePrice * (1 + (Math.random() - 0.5) * 0.2); // +/- 10%
-          } else { // 10% chance of being a significant outlier
-              purchasePrice = commonPurchasePrice * (1 - Math.random() * 0.5); // Price can be much lower -> margin higher
+              purchasePrice = commonPurchasePrice * (1 + (Math.random() - 0.5) * 0.1); // +/- 5%
+          } else { // 10% chance of being a different, but not necessarily outlier price
+              purchasePrice = commonPurchasePrice * (1 - Math.random() * 0.15); // Price can be lower -> margin higher but likely not outlier
           }
           
           const state = geoLocations.states[Math.floor(Math.random() * geoLocations.states.length)];
@@ -119,13 +128,20 @@ function generateData() {
 const fullDataset = generateData();
 
 
-export async function getAppData(filters: { state?: string; city?: string, customModes?: Record<string, number> } = {}): Promise<AppData> {
+export async function getAppData(filters: { state?: string[] | string; city?: string, customModes?: Record<string, number> } = {}): Promise<AppData> {
   let filteredPurchases = fullDataset.purchases;
 
-  if (filters.city && filters.state) {
+  if (filters.city && filters.state && typeof filters.state === 'string') {
     filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
   } else if(filters.state) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
+     if (Array.isArray(filters.state)) {
+      const stateSet = new Set(filters.state);
+      if (stateSet.size > 0) {
+        filteredPurchases = fullDataset.purchases.filter(p => stateSet.has(p.state));
+      }
+    } else {
+      filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
+    }
   }
 
   const productIdsInScope = new Set(filteredPurchases.map(p => p.productId));
@@ -190,9 +206,10 @@ export async function getAppData(filters: { state?: string; city?: string, custo
 
     let marginLoss = 0;
     if (!isOutlier) {
-      // (Actual Price - Best Price) * Quantity
-      const loss = (p.purchasePrice - bestPrice) * p.quantity;
-      marginLoss = loss > 0 ? loss : 0;
+      const marginDifference = bestMargin - margin;
+      const lossPerUnit = product.sellingPrice * (marginDifference / 100);
+      const totalLoss = lossPerUnit * p.quantity;
+      marginLoss = totalLoss > 0 ? totalLoss : 0;
     }
     
     return {
