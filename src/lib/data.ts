@@ -1,4 +1,4 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, VendorSummary, ProductDetails } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails } from "@/lib/types";
 import { parseISO, startOfYear } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -128,20 +128,14 @@ function generateData() {
 const fullDataset = generateData();
 
 
-export async function getAppData(filters: { state?: string[] | string; city?: string, customModes?: Record<string, number> } = {}): Promise<AppData> {
+export async function getAppData(filters: { state?: string; city?: string, cityState?: string, customModes?: Record<string, number> } = {}): Promise<AppData> {
   let filteredPurchases = fullDataset.purchases;
 
-  if (filters.city && filters.state && typeof filters.state === 'string') {
+  // Correct filtering logic
+  if (filters.city && filters.state) {
     filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
-  } else if(filters.state) {
-     if (Array.isArray(filters.state)) {
-      const stateSet = new Set(filters.state);
-      if (stateSet.size > 0) {
-        filteredPurchases = fullDataset.purchases.filter(p => stateSet.has(p.state));
-      }
-    } else {
-      filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
-    }
+  } else if (filters.state) {
+    filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
   }
 
   const productIdsInScope = new Set(filteredPurchases.map(p => p.productId));
@@ -317,7 +311,7 @@ export async function getAppData(filters: { state?: string[] | string; city?: st
 
 export async function getProductDetails(
     productId: string, 
-    filters: { state?: string; city?: string } = {}, 
+    filters: { state?: string; city?: string, cityState?:string } = {}, 
     customModes?: Record<string, number>,
     getPanIndiaData: boolean = false
 ): Promise<ProductDetails | null> {
