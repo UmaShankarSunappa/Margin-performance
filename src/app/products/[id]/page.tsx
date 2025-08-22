@@ -1,9 +1,11 @@
 'use client';
-import { notFound } from "next/navigation";
+import { notFound, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, ShoppingBag, Truck, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 import Header from "@/components/Header";
 import { getProductDetails } from "@/lib/data";
@@ -13,7 +15,7 @@ import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { Product, ProcessedPurchase, ProductSummary } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Loading from "@/app/loading";
 import { ModeAdjustmentDialog } from "@/components/dialogs/ModeAdjustmentDialog";
 
@@ -24,23 +26,50 @@ type ProductDetailPageProps = {
 };
 
 export default function ProductDetailPage({ params }: ProductDetailPageProps) {
+  const searchParams = useSearchParams();
   const [details, setDetails] = useState<{ product: Product; purchases: ProcessedPurchase[]; summary: ProductSummary | undefined; } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customModes, setCustomModes] = useState<Record<string, number>>({});
+  
+  const initialScope = searchParams.get('scope');
+  const [showPanIndia, setShowPanIndia] = useState(!initialScope || initialScope === 'pan-india');
+
+  const filters = useMemo(() => {
+    if (showPanIndia) return {};
+    const scope = searchParams.get('scope');
+    const state = searchParams.get('state');
+    const city = searchParams.get('city');
+    const cityState = searchParams.get('cityState');
+    
+    let f: { state?: string, city?: string } = {};
+    if (scope === 'state' && state) {
+      f.state = state;
+    } else if (scope === 'city' && city && cityState) {
+      f.city = city;
+      f.state = cityState;
+    }
+    return f;
+  }, [searchParams, showPanIndia]);
 
   useEffect(() => {
     setIsLoading(true);
-    getProductDetails(params.id, customModes).then(data => {
+    getProductDetails(params.id, filters, customModes).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, customModes]);
+  }, [params.id, customModes, filters]);
 
   const handleModeSave = (newMode: number) => {
     setCustomModes(prev => ({ ...prev, [params.id]: newMode }));
     setIsModalOpen(false);
   };
+
+  const getBackLink = () => {
+    const scope = searchParams.get('scope');
+    if (scope === 'state' || scope === 'city') return `/?${searchParams.toString()}`;
+    return '/margin-analysis';
+  }
 
   if (isLoading) {
     return <Loading />;
@@ -52,6 +81,8 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
   const { product, purchases, summary } = details;
   const nonOutlierPurchases = purchases.filter(p => !p.isOutlier);
+  
+  const isFilterActive = initialScope && initialScope !== 'pan-india';
 
   return (
     <>
@@ -59,7 +90,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-            <Link href="/margin-analysis">
+            <Link href={getBackLink()}>
               <ArrowLeft className="h-4 w-4" />
               <span className="sr-only">Back</span>
             </Link>
@@ -67,6 +98,16 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {product.name}
           </h1>
+          {isFilterActive && (
+             <div className="flex items-center space-x-2 ml-auto">
+                <Switch 
+                  id="pan-india-toggle" 
+                  checked={showPanIndia}
+                  onCheckedChange={setShowPanIndia}
+                />
+                <Label htmlFor="pan-india-toggle">Show Pan-India Data</Label>
+              </div>
+          )}
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of valid purchase transactions" icon={ShoppingCart} />

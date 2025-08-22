@@ -134,25 +134,24 @@ export async function getAppData(filters: { state?: string; city?: string, custo
   const products = fullDataset.products.filter(p => productIdsInScope.has(p.id));
   const vendors = fullDataset.vendors.filter(v => vendorIdsInScope.has(v.id));
   
-  const productMap = new Map(products.map(p => [p.id, p]));
-  const vendorMap = new Map(vendors.map(v => [v.id, v]));
+  const productMap = new Map(fullDataset.products.map(p => [p.id, p]));
+  const vendorMap = new Map(fullDataset.vendors.map(v => [v.id, v]));
 
-  // Step 1: Calculate margin for all purchases within the current filter scope
-  const purchasesWithMargin = filteredPurchases.map(purchase => {
+  // Step 1: Calculate margin for ALL purchases to establish global benchmarks
+  const allPurchasesWithMargin = fullDataset.purchases.map(purchase => {
     const product = productMap.get(purchase.productId)!;
     const margin = ((product.sellingPrice - purchase.purchasePrice) / product.sellingPrice) * 100;
     return { ...purchase, margin };
   });
 
-  // Step 2: For each product, calculate mode, identify outliers, and find the best margin from non-outliers
+  // Step 2: For each product, calculate global mode, identify outliers, and find the best margin from non-outliers
   const productBenchmarks = new Map<string, { mode: number, bestMargin: number, bestPrice: number }>();
-  for (const product of products) {
-      const productPurchases = purchasesWithMargin.filter(p => p.productId === product.id);
+  for (const product of fullDataset.products) {
+      const productPurchases = allPurchasesWithMargin.filter(p => p.productId === product.id);
       if (productPurchases.length === 0) continue;
 
       const margins = productPurchases.map(p => p.margin);
       
-      // Use custom mode if provided, otherwise calculate it
       const modeMargin = filters.customModes?.[product.id] ?? getMode(margins.map(m => parseFloat(m.toFixed(2)))) ?? 0;
       
       const outlierThreshold = 4 * modeMargin;
@@ -171,19 +170,23 @@ export async function getAppData(filters: { state?: string; city?: string, custo
       productBenchmarks.set(product.id, { mode: modeMargin, bestMargin, bestPrice });
   }
 
-  // Step 3: Process filtered purchases to calculate margin loss using the new logic
-  const processedPurchases: ProcessedPurchase[] = purchasesWithMargin.map(p => {
+  // Step 3: Process filtered purchases to calculate margin loss using the global benchmarks
+  const processedPurchases: ProcessedPurchase[] = filteredPurchases.map(p => {
     const product = productMap.get(p.productId)!;
     const vendor = vendorMap.get(p.vendorId)!;
     const benchmark = productBenchmarks.get(p.productId);
 
+    // This part now uses the pre-calculated margin
+    const purchaseWithMargin = allPurchasesWithMargin.find(pwm => pwm.id === p.id)!;
+    const margin = purchaseWithMargin.margin;
+
     if (!benchmark) { // Should not happen if product exists
-        return { ...p, product, vendor, marginLoss: 0, isBestMargin: false, isOutlier: false, benchmarkMargin: p.margin, modeMargin: 0 };
+        return { ...p, margin, product, vendor, marginLoss: 0, isBestMargin: false, isOutlier: false, benchmarkMargin: margin, modeMargin: 0 };
     }
 
     const { mode, bestMargin, bestPrice } = benchmark;
     const outlierThreshold = 4 * mode;
-    const isOutlier = p.margin >= outlierThreshold;
+    const isOutlier = margin >= outlierThreshold;
 
     let marginLoss = 0;
     if (!isOutlier) {
@@ -194,6 +197,7 @@ export async function getAppData(filters: { state?: string; city?: string, custo
     
     return {
       ...p,
+      margin,
       product,
       vendor,
       marginLoss,
@@ -206,24 +210,24 @@ export async function getAppData(filters: { state?: string; city?: string, custo
   
   const totalMarginLoss = processedPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
 
-  // Step 4: Create summaries
+  // Step 4: Create summaries based on the SCOPED/FILTERED data
   const productsSummary: ProductSummary[] = products.map(product => {
     const productPurchases = processedPurchases.filter(p => p.productId === product.id);
     if (productPurchases.length === 0) return null;
     
     const nonOutlierPurchases = productPurchases.filter(p => !p.isOutlier);
+    if (nonOutlierPurchases.length === 0) return null; // Don't show products that ONLY have outlier purchases in this scope
 
     const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     const totalPurchaseValue = nonOutlierPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
     
+    // Global benchmark is used for bestMargin
     const benchmark = productBenchmarks.get(product.id);
     const bestMarginFromBenchmark = benchmark?.bestMargin || 0;
     const modeMargin = benchmark?.mode || 0;
     
-    const bestMarginPurchase = nonOutlierPurchases.find(p => p.isBestMargin);
-    const worstMarginPurchase = nonOutlierPurchases.length > 0 
-      ? nonOutlierPurchases.reduce((worst, current) => (current.margin < worst.margin ? current : worst), nonOutlierPurchases[0])
-      : null;
+    const bestMarginPurchase = nonOutlierPurchases.sort((a,b) => b.margin - a.margin)[0];
+    const worstMarginPurchase = nonOutlierPurchases.sort((a,b) => a.margin - b.margin)[0];
     const sortedByDate = [...productPurchases].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     
     return {
@@ -235,9 +239,9 @@ export async function getAppData(filters: { state?: string; city?: string, custo
       averageMargin: nonOutlierPurchases.length > 0 ? nonOutlierPurchases.reduce((acc, p) => acc + p.margin, 0) / nonOutlierPurchases.length : 0,
       bestMargin: bestMarginFromBenchmark,
       totalQuantityPurchased: nonOutlierPurchases.reduce((acc, p) => acc + p.quantity, 0),
-      worstMargin: nonOutlierPurchases.length > 0 ? Math.min(...nonOutlierPurchases.map(p => p.margin)) : 0,
-      bestVendor: bestMarginPurchase ? {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name } : null,
-      worstVendor: worstMarginPurchase ? { id: worstMarginPurchase.vendor.id, name: worstMarginPurchase.vendor.name } : null,
+      worstMargin: worstMarginPurchase.margin,
+      bestVendor: {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name },
+      worstVendor: { id: worstMarginPurchase.vendor.id, name: worstMarginPurchase.vendor.name },
       latestPurchasePrice: sortedByDate.length > 0 ? sortedByDate[0].purchasePrice : null,
       marginLossPercentage: totalPurchaseValue > 0 ? (totalMarginLoss / totalPurchaseValue) * 100 : 0,
       modeMargin: modeMargin,
@@ -258,12 +262,9 @@ export async function getAppData(filters: { state?: string; city?: string, custo
   }).filter((v): v is VendorSummary => v !== null);
 
   // Step 5: Margin Analysis Summary
-  const startOfCurrentYear = startOfYear(new Date());
   const marginAnalysisSummary: MarginAnalysisProductSummary[] = products.map(product => {
      const productPurchases = processedPurchases.filter(p => p.productId === product.id);
     if (productPurchases.length === 0) return null;
-
-    const purchasesYTD = productPurchases.filter(p => parseISO(p.date) >= startOfCurrentYear);
     
     const nonOutlierPurchases = productPurchases.filter(p => !p.isOutlier);
     const totalPurchaseCost = nonOutlierPurchases.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
@@ -273,11 +274,12 @@ export async function getAppData(filters: { state?: string; city?: string, custo
 
     const vendorIds = new Set(nonOutlierPurchases.map(p => p.vendorId));
     
-    const baseSummary = productsSummary.find(ps => ps.id === product.id)!;
+    const baseSummary = productsSummary.find(ps => ps.id === product.id);
+    if (!baseSummary) return null;
 
     return {
         ...baseSummary,
-        purchaseCount: purchasesYTD.filter(p => !p.isOutlier).length,
+        purchaseCount: nonOutlierPurchases.length, // This should reflect the filtered period
         marginLossPercentage,
         vendorCount: vendorIds.size,
     };
@@ -296,18 +298,15 @@ export async function getAppData(filters: { state?: string; city?: string, custo
 }
 
 
-export async function getProductDetails(productId: string, customModes?: Record<string, number>) {
-    // This function will now accept custom modes to re-calculate data
-    const data = await getAppData({ customModes: customModes });
-    const product = data.products.find(p => p.id === productId);
+export async function getProductDetails(productId: string, filters: { state?: string; city?: string } = {}, customModes?: Record<string, number>) {
+    const data = await getAppData({ ...filters, customModes });
+    const product = fullDataset.products.find(p => p.id === productId);
     if (!product) return null;
 
-    // We need all purchases for this product, regardless of initial geo filter, to recalculate
-    const allPurchasesForProduct = (await getAppData({ customModes })).processedPurchases.filter(p => p.productId === productId);
-    
+    const purchases = data.processedPurchases.filter(p => p.productId === productId);
     const summary = data.productsSummary.find(p => p.id === productId);
 
-    return { product, purchases: allPurchasesForProduct, summary };
+    return { product, purchases, summary };
 }
 
 export async function getVendorDetails(vendorId: string) {
