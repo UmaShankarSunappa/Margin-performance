@@ -19,11 +19,9 @@ const nextConfig: NextConfig = {
     ],
   },
   // The `allowedDevOrigins` option is in preview and is only available in `next dev`.
-  experimental: {
-    allowedDevOrigins: [
-      'https://*.cloudworkstations.dev',
-    ],
-  },
+  allowedDevOrigins: [
+    'https://*.cloudworkstations.dev',
+  ],
 };
 
 export default nextConfig;
