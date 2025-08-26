@@ -1,5 +1,5 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary } from "@/lib/types";
-import { parseISO, startOfYear } from 'date-fns';
+import { parseISO, startOfYear, subMonths, isAfter } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
 function getMode(arr: number[]): number | undefined {
@@ -128,13 +128,16 @@ const fullDataset = generateData();
 
 
 export async function getAppData(filters: { state?: string; city?: string, cityState?: string, customModes?: Record<string, number> } = {}): Promise<AppData> {
-  let filteredPurchases = fullDataset.purchases;
+  const threeMonthsAgo = subMonths(new Date(), 3);
+  const recentPurchases = fullDataset.purchases.filter(p => isAfter(parseISO(p.date), threeMonthsAgo));
+
+  let filteredPurchases = recentPurchases;
 
   // Correct filtering logic. Use cityState for city filtering.
   if (filters.city && filters.state) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
+    filteredPurchases = recentPurchases.filter(p => p.city === filters.city && p.state === filters.state);
   } else if (filters.state) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
+    filteredPurchases = recentPurchases.filter(p => p.state === filters.state);
   }
 
   const productIdsInScope = new Set(filteredPurchases.map(p => p.productId));
@@ -146,8 +149,8 @@ export async function getAppData(filters: { state?: string; city?: string, cityS
   const productMap = new Map(fullDataset.products.map(p => [p.id, p]));
   const vendorMap = new Map(fullDataset.vendors.map(v => [v.id, v]));
 
-  // Step 1: Calculate margin for ALL purchases to establish global benchmarks
-  const allPurchasesWithMargin = fullDataset.purchases.map(purchase => {
+  // Step 1: Calculate margin for ALL recent purchases to establish global benchmarks
+  const allPurchasesWithMargin = recentPurchases.map(purchase => {
     const product = productMap.get(purchase.productId)!;
     const margin = ((product.sellingPrice - purchase.purchasePrice) / product.sellingPrice) * 100;
     return { ...purchase, margin };
