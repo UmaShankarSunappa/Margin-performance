@@ -21,7 +21,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { subMonths, isWithinInterval, parseISO } from 'date-fns';
 
-type Period = '3m' | 'fy';
+type Period = 'fy' | '3m';
 
 function MarginAnalysisContent() {
     const searchParams = useSearchParams();
@@ -30,9 +30,8 @@ function MarginAnalysisContent() {
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
 
-
     const [allPurchases, setAllPurchases] = useState<ProcessedPurchase[]>([]);
-    const [summary, setSummary] = useState<MarginAnalysisProductSummary[]>([]);
+    const [allProductsSummary, setAllProductsSummary] = useState<MarginAnalysisProductSummary[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [period, setPeriod] = useState<Period>('fy');
     const [isLoading, setIsLoading] = useState(true);
@@ -49,17 +48,72 @@ function MarginAnalysisContent() {
     }, [scope, state, city, cityState]);
 
     useEffect(() => {
-        // Here we pass the correct structure to getAppData
-        getAppData({
-            state: filters.state,
-            city: filters.city,
-            // getAppData expects state for city, not cityState
-        }).then(data => {
+        getAppData(filters).then(data => {
             setAllPurchases(data.processedPurchases);
-            setSummary(data.marginAnalysisSummary.sort((a,b) => b.totalMarginLoss - a.totalMarginLoss));
+            setAllProductsSummary(data.marginAnalysisSummary);
             setIsLoading(false);
         });
     }, [filters]);
+    
+    const filteredSummary = useMemo(() => {
+      if (isLoading) return [];
+      
+      const now = new Date();
+      let periodStartDate: Date;
+      let periodEndDate: Date | null = null;
+      
+      if (period === '3m') {
+          periodStartDate = subMonths(now, 3);
+      } else { // 'fy'
+          const currentMonth = now.getMonth(); // 0-11 (Jan-Dec)
+          const currentYear = now.getFullYear();
+          if (currentMonth >= 3) { // April (month 3) onwards
+              periodStartDate = new Date(currentYear, 3, 1); // April 1 of current year
+              periodEndDate = new Date(currentYear + 1, 2, 31); // March 31 of next year
+          } else { // Jan, Feb, March (months 0, 1, 2)
+              periodStartDate = new Date(currentYear - 1, 3, 1); // April 1 of previous year
+              periodEndDate = new Date(currentYear, 2, 31); // March 31 of current year
+          }
+      }
+
+      return allProductsSummary
+        .map(productSummary => {
+            const purchasesInPeriod = allPurchases.filter(p => {
+                if (p.productId !== productSummary.id) return false;
+                
+                const purchaseDate = parseISO(p.date);
+                if (periodEndDate) { // Financial year
+                    return isWithinInterval(purchaseDate, { start: periodStartDate, end: periodEndDate });
+                } else { // Last 3 months
+                    return purchaseDate >= periodStartDate;
+                }
+            });
+            
+            if(purchasesInPeriod.length === 0) return null;
+
+            const nonOutlierPurchases = purchasesInPeriod.filter(p => !p.isOutlier);
+            if (nonOutlierPurchases.length === 0) return null;
+
+            const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
+            const totalPurchaseCost = nonOutlierPurchases.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
+            const marginLossPercentage = totalPurchaseCost > 0 ? (totalMarginLoss / totalPurchaseCost) * 100 : 0;
+            const vendorIds = new Set(nonOutlierPurchases.map(p => p.vendorId));
+
+            return {
+                ...productSummary,
+                totalMarginLoss,
+                marginLossPercentage,
+                purchaseCount: nonOutlierPurchases.length,
+                vendorCount: vendorIds.size
+            };
+        })
+        .filter((p): p is MarginAnalysisProductSummary => p !== null)
+        .filter(product => 
+          product.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .sort((a,b) => b.totalMarginLoss - a.totalMarginLoss);
+
+    }, [allProductsSummary, allPurchases, period, searchQuery, isLoading]);
 
     const handleDownload = () => {
         const dataToExport = filteredSummary.map(p => ({
@@ -67,7 +121,7 @@ function MarginAnalysisContent() {
             'Product Name': p.name,
             'Total Margin Loss': p.totalMarginLoss,
             'Margin Loss %': p.marginLossPercentage,
-            'Purchases (YTD)': p.purchaseCount,
+            'Purchases': p.purchaseCount,
             'Vendor Count': p.vendorCount,
         }));
         
@@ -75,75 +129,20 @@ function MarginAnalysisContent() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Margin Analysis');
         
-        // Adjust column widths
         const colWidths = [
             { wch: 20 }, // Product ID
             { wch: 30 }, // Product Name
             { wch: 20 }, // Total Margin Loss
             { wch: 15 }, // Margin Loss %
-            { wch: 20 }, // Purchases (YTD)
+            { wch: 20 }, // Purchases
             { wch: 15 }, // Vendor Count
         ];
         worksheet['!cols'] = colWidths;
         
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-        saveAs(data, 'product_margin_analysis.xlsx');
+        saveAs(data, `product_margin_analysis_${period}.xlsx`);
     };
-    
-    const filteredSummary = summary
-      .map(productSummary => {
-          const now = new Date();
-          let periodStartDate: Date;
-          let periodEndDate: Date | null = null;
-          
-          if (period === '3m') {
-              periodStartDate = subMonths(now, 3);
-          } else { // 'fy'
-              const currentMonth = now.getMonth(); // 0-11 (Jan-Dec)
-              const currentYear = now.getFullYear();
-              if (currentMonth >= 3) { // April (month 3) onwards
-                  periodStartDate = new Date(currentYear, 3, 1); // April 1 of current year
-                  periodEndDate = new Date(currentYear + 1, 2, 31); // March 31 of next year
-              } else { // Jan, Feb, March (months 0, 1, 2)
-                  periodStartDate = new Date(currentYear - 1, 3, 1); // April 1 of previous year
-                  periodEndDate = new Date(currentYear, 2, 31); // March 31 of current year
-              }
-          }
-
-          const purchasesInPeriod = allPurchases.filter(p => {
-              const purchaseDate = parseISO(p.date);
-              const isProductMatch = p.productId === productSummary.id;
-              
-              if (!isProductMatch) return false;
-              
-              if (periodEndDate) { // Financial year
-                  return isWithinInterval(purchaseDate, { start: periodStartDate, end: periodEndDate });
-              } else { // Last 3 months
-                  return purchaseDate >= periodStartDate;
-              }
-          });
-          
-          if(purchasesInPeriod.length === 0) return null;
-
-          const totalMarginLoss = purchasesInPeriod.reduce((acc, p) => acc + p.marginLoss, 0);
-          const totalPurchaseCost = purchasesInPeriod.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
-          const marginLossPercentage = totalPurchaseCost > 0 ? (totalMarginLoss / totalPurchaseCost) * 100 : 0;
-          const vendorIds = new Set(purchasesInPeriod.map(p => p.vendorId));
-
-          return {
-              ...productSummary,
-              totalMarginLoss,
-              marginLossPercentage,
-              purchaseCount: purchasesInPeriod.length,
-              vendorCount: vendorIds.size
-          };
-      })
-      .filter((p): p is MarginAnalysisProductSummary => p !== null) // remove nulls
-      .filter(product => 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-      .sort((a,b) => b.totalMarginLoss - a.totalMarginLoss);
     
     const getPageTitle = () => {
       if (scope === 'city' && city && cityState) return `Product Margin Loss Analysis for ${city}, ${cityState}`;
