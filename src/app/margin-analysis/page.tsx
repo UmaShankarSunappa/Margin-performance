@@ -19,9 +19,9 @@ import type { MarginAnalysisProductSummary, ProcessedPurchase } from '@/lib/type
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
-import { subMonths, isAfter, parseISO } from 'date-fns';
+import { subMonths, isWithinInterval, parseISO } from 'date-fns';
 
-type Period = 'all' | '1m' | '3m' | '6m' | '1y';
+type Period = '3m' | 'fy';
 
 function MarginAnalysisContent() {
     const searchParams = useSearchParams();
@@ -34,7 +34,7 @@ function MarginAnalysisContent() {
     const [allPurchases, setAllPurchases] = useState<ProcessedPurchase[]>([]);
     const [summary, setSummary] = useState<MarginAnalysisProductSummary[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [period, setPeriod] = useState<Period>('all');
+    const [period, setPeriod] = useState<Period>('fy');
     const [isLoading, setIsLoading] = useState(true);
 
     const filters = useMemo(() => {
@@ -94,18 +94,37 @@ function MarginAnalysisContent() {
     const filteredSummary = summary
       .map(productSummary => {
           const now = new Date();
-          let periodStartDate: Date | null = null;
-          if (period !== 'all') {
-              const months = { '1m': 1, '3m': 3, '6m': 6, '1y': 12 }[period];
-              periodStartDate = subMonths(now, months);
+          let periodStartDate: Date;
+          let periodEndDate: Date | null = null;
+          
+          if (period === '3m') {
+              periodStartDate = subMonths(now, 3);
+          } else { // 'fy'
+              const currentMonth = now.getMonth(); // 0-11 (Jan-Dec)
+              const currentYear = now.getFullYear();
+              if (currentMonth >= 3) { // April (month 3) onwards
+                  periodStartDate = new Date(currentYear, 3, 1); // April 1 of current year
+                  periodEndDate = new Date(currentYear + 1, 2, 31); // March 31 of next year
+              } else { // Jan, Feb, March (months 0, 1, 2)
+                  periodStartDate = new Date(currentYear - 1, 3, 1); // April 1 of previous year
+                  periodEndDate = new Date(currentYear, 2, 31); // March 31 of current year
+              }
           }
 
-          const purchasesInPeriod = allPurchases.filter(p => 
-              p.productId === productSummary.id &&
-              (!periodStartDate || isAfter(parseISO(p.date), periodStartDate))
-          );
+          const purchasesInPeriod = allPurchases.filter(p => {
+              const purchaseDate = parseISO(p.date);
+              const isProductMatch = p.productId === productSummary.id;
+              
+              if (!isProductMatch) return false;
+              
+              if (periodEndDate) { // Financial year
+                  return isWithinInterval(purchaseDate, { start: periodStartDate, end: periodEndDate });
+              } else { // Last 3 months
+                  return purchaseDate >= periodStartDate;
+              }
+          });
           
-          if(purchasesInPeriod.length === 0 && period !== 'all') return null;
+          if(purchasesInPeriod.length === 0) return null;
 
           const totalMarginLoss = purchasesInPeriod.reduce((acc, p) => acc + p.marginLoss, 0);
           const totalPurchaseCost = purchasesInPeriod.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
@@ -155,11 +174,8 @@ function MarginAnalysisContent() {
                     />
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant={period === '1y' ? 'default' : 'outline'} onClick={() => setPeriod('1y')}>1 Year</Button>
-                    <Button variant={period === '6m' ? 'default' : 'outline'} onClick={() => setPeriod('6m')}>6 Months</Button>
+                    <Button variant={period === 'fy' ? 'default' : 'outline'} onClick={() => setPeriod('fy')}>Financial Year</Button>
                     <Button variant={period === '3m' ? 'default' : 'outline'} onClick={() => setPeriod('3m')}>3 Months</Button>
-                    <Button variant={period === '1m' ? 'default' : 'outline'} onClick={() => setPeriod('1m')}>1 Month</Button>
-                    <Button variant={period === 'all' ? 'default' : 'outline'} onClick={() => setPeriod('all')}>All Time</Button>
                 </div>
             </div>
 
