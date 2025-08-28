@@ -1,29 +1,24 @@
 'use client';
 import { useState, useEffect, Suspense, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import KpiCard from "@/components/dashboard/KPI";
-import { DollarSign, Percent, Search, ShoppingCart, Users, FileDown, MapPin } from "lucide-react";
+import { Search, FileDown } from "lucide-react";
 import type { MarginAnalysisProductSummary, ProcessedPurchase } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { subMonths, isWithinInterval, parseISO } from 'date-fns';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from '@/lib/utils';
 
 type Period = 'fy' | '3m';
 
 function MarginAnalysisContent() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const scope = searchParams.get('scope');
     const state = searchParams.get('state');
@@ -143,6 +138,12 @@ function MarginAnalysisContent() {
         const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
         saveAs(data, `product_margin_analysis_${period}.xlsx`);
     };
+
+    const handleRowClick = (productId: string) => {
+        const params = new URLSearchParams(searchParams);
+        // We are already on margin-analysis, so the scope params are present if a filter is active
+        router.push(`/products/${productId}?${params.toString()}`);
+    }
     
     const getPageTitle = () => {
       if (scope === 'city' && city && cityState) return `Product Margin Loss Analysis for ${city}, ${cityState}`;
@@ -187,31 +188,34 @@ function MarginAnalysisContent() {
                     {isLoading ? (
                        <p>Loading analysis...</p>
                     ) : (
-                        <Accordion type="single" collapsible className="w-full">
-                            {filteredSummary.map((product) => (
-                                <AccordionItem value={product.id} key={product.id}>
-                                    <AccordionTrigger className='hover:no-underline'>
-                                        <div className="flex justify-between w-full pr-4">
-                                            <span className="font-semibold text-lg">{product.name}</span>
-                                            <span className="text-destructive font-semibold text-lg">{formatCurrency(product.totalMarginLoss)}</span>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        <div className="p-4 bg-muted/50 rounded-lg">
-                                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
-                                                <KpiCard title="Margin Loss %" value={`${formatNumber(product.marginLossPercentage)}%`} description="Total margin loss / total purchase cost" icon={Percent} />
-                                                <KpiCard title="Total Margin Loss" value={formatCurrency(product.totalMarginLoss)} description="Cumulative loss for this product" icon={DollarSign} />
-                                                <KpiCard title="Purchases" value={product.purchaseCount.toString()} description={`Number of purchase orders in period`} icon={ShoppingCart} />
-                                                <KpiCard title="Vendor Count" value={product.vendorCount.toString()} description="Unique vendors for this product" icon={Users} />
-                                            </div>
-                                            <Button asChild>
-                                                <Link href={`/products/${product.id}`}>View Full Details</Link>
-                                            </Button>
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
+                        <div className="relative w-full overflow-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Product</TableHead>
+                                        <TableHead className="text-right">Total Margin Loss</TableHead>
+                                        <TableHead className="text-right">Total Purchases</TableHead>
+                                        <TableHead className="text-right">Total Vendors</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredSummary.map((product) => (
+                                        <TableRow 
+                                            key={product.id} 
+                                            onClick={() => handleRowClick(product.id)}
+                                            className="cursor-pointer"
+                                        >
+                                            <TableCell className="font-semibold">{product.name}</TableCell>
+                                            <TableCell className={cn("text-right font-semibold", product.totalMarginLoss > 0 && "text-destructive")}>
+                                                {formatCurrency(product.totalMarginLoss)}
+                                            </TableCell>
+                                            <TableCell className="text-right">{product.purchaseCount}</TableCell>
+                                            <TableCell className="text-right">{product.vendorCount}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                      {filteredSummary.length === 0 && !isLoading && (
                         <div className="text-center py-10">
