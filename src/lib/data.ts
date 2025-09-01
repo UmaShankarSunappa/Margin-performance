@@ -51,7 +51,7 @@ function generateData() {
 
   const productCount = 150;
   const vendorCount = 66;
-  const purchasesPerProduct = 20; // Increased for better mode calculation
+  const purchasesPerProduct = 50; // Increased for better mode calculation
 
   // Generate Products
   const pharmaNames = [
@@ -235,7 +235,11 @@ export async function getAppData(
       const modeMargin = getMode(margins.map(m => parseFloat(m.toFixed(2)))) ?? 0;
       const multiplier = options.customMultipliers?.[product.id] ?? 4.0;
       const outlierThreshold = multiplier * modeMargin;
-      const nonOutlierPurchases = productPurchases.filter(p => p.margin < outlierThreshold);
+      
+      // The benchmark (bestMargin) must be calculated on non-outliers from the *same filtered set*
+      const nonOutlierPurchases = filteredPurchases
+        .map(p => allPurchasesWithMargin.find(pwm => pwm.id === p.id)!)
+        .filter(p => p.productId === product.id && p.margin < outlierThreshold);
       
       let bestMargin = 0;
       let bestPrice = product.sellingPrice;
@@ -243,6 +247,11 @@ export async function getAppData(
         bestMargin = Math.max(...nonOutlierPurchases.map(p => p.margin));
         const bestPurchase = nonOutlierPurchases.find(p => p.margin === bestMargin)!;
         bestPrice = bestPurchase.purchasePrice;
+      } else {
+        // Fallback if all purchases for the period are outliers
+        // We still need a benchmark, so let's use the mode margin itself, which is not ideal but better than 0.
+        bestMargin = modeMargin;
+        bestPrice = product.sellingPrice * (1 - (modeMargin / 100));
       }
       productBenchmarks.set(product.id, { mode: modeMargin, bestMargin, bestPrice });
   }
