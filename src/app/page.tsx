@@ -155,25 +155,19 @@ export default function Home() {
     );
   }
 
-  const { periodData, last4MonthsData } = data;
+  const { last4MonthsData } = data;
 
-  const topProductsByValue = periodData?.productsSummary
+  const topProductsByValue = last4MonthsData?.productsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
     .slice(0, 5) ?? [];
 
-  const topProductsByPercentage = periodData?.productsSummary
+  const topProductsByPercentage = last4MonthsData?.productsSummary
     .sort((a, b) => b.marginLossPercentage - a.marginLossPercentage)
     .slice(0, 5) ?? [];
     
-  const topVendors = periodData?.vendorsSummary
+  const topVendors = last4MonthsData?.vendorsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
     .slice(0, 5) ?? [];
-  
-  const getPeriodLabel = () => {
-    if (period === 'mtd') return "Current Month till Date";
-    const month = financialYearMonths.find(m => m.value === period);
-    return month ? month.label : "Selected Period";
-  }
 
   return (
     <>
@@ -294,7 +288,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (Value)</CardTitle>
                 <CardDescription>
-                  Products with the highest margin loss for {getPeriodLabel()}.
+                  Products with the highest margin loss for Current Month & Last 3 Months.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -305,7 +299,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (%)</CardTitle>
                 <CardDescription>
-                  Products with the highest margin loss percentage for {getPeriodLabel()}.
+                  Products with the highest margin loss percentage for Current Month & Last 3 Months.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -316,7 +310,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Top 5 Vendors by Margin Loss</CardTitle>
                 <CardDescription>
-                  Vendors associated with the highest total margin loss for {getPeriodLabel()}.
+                  Vendors associated with the highest total margin loss for Current Month & Last 3 Months.
                 </CardDescription>
               </CardHeader>
               <CardContent>
