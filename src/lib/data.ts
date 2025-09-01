@@ -54,13 +54,43 @@ function generateData() {
   const purchasesPerProduct = 20; // Increased for better mode calculation
 
   // Generate Products
+  const pharmaNames = [
+    "Dolo 650mg", "Telma 40mg", "Istamet 50/500mg", "Calpol 500mg", "Azithral 500mg",
+    "Pantop 40mg", "Augmentin 625 Duo", "Volini Gel", "Moov Spray", "Betadine Ointment",
+    "Zincovit Tablet", "Neurobion Forte", "Ecosprin 75mg", "Atorva 10mg", "Losar 50mg",
+    "Ciplox Eye Drops", "Otrivin Nasal Spray", "Vicks Action 500", "Crocin Advance",
+    "Combiflam Tablet", "Glycomet GP 2", "Janumet 50/1000", "Mixtard 30/70", "Humalog KwikPen",
+    "Thyronorm 50mcg", "Eltroxin 100mcg", "Shelcal 500mg", "Evion 400mg", "Limcee 500mg",
+    "Clavam 625mg", "Taxim-O 200mg", "Cefix 200mg", "Monocef 1g Injection", "Moxikind-CV 625",
+    "Domstal Tablet", "Ondem 4mg", "Eldoper Capsule", "Rantac 150mg", "Digene Gel",
+    "Gelusil MPS", "Cremaffin Plus", "Duphalac Syrup", "Smuth Syrup", "Isabgol Husk",
+    "Revital H", "Supradyn Tablet", "Becosules Z", "A to Z NS Tablet", "Polybion Capsule",
+    "Unienzyme Tablet", "Allegra 120mg", "Cetrizine 10mg", "Avil 25mg", "Montair LC",
+    "Deriphyllin Retard 150", "Asthalin Inhaler", "Seroflo Inhaler", "Foracort Inhaler",
+    "Budecort Respules", "Duolin Respules", "Meftal-Spas Tablet", "Voveran SR 100", "Nise Tablet",
+    "Etorico 90mg", "Myoril Capsule", "Zerodol-SP", "Omnigel", "Soframycin Skin Cream",
+    "Candid-B Cream", "Fourderm Cream", "Betnovate-N Cream", "Silverex Ointment",
+    "Neosporin Powder", "Cipladine Ointment", "Burnol Cream", "Dettol Antiseptic", "Savlon Liquid",
+    "Band-Aid", "Leukoplast Tape", "Accu-Chek Active", "Dr. Morepen GlucoOne", "Omron BP Monitor",
+    "Himalaya Liv.52", "Himalaya Gasex", "Himalaya Septilin", "Dabur Chyawanprash", "Pudin Hara",
+    "Hajmola", "Eno Fruit Salt", "ORS Powder", "Electral Powder", "Gaviscon Syrup"
+  ];
+
   for (let i = 1; i <= productCount; i++) {
+    const nameIndex = (i - 1) % pharmaNames.length;
+    let productName = pharmaNames[nameIndex];
+    // If we've looped through all unique names, add a number to differentiate
+    if (i > pharmaNames.length) {
+        productName = `${productName} #${Math.floor(i / pharmaNames.length) + 1}`;
+    }
+
     products.push({
       id: `sku-${i}`,
-      name: `SKU-${i}`,
+      name: productName,
       sellingPrice: Math.random() * 300 + 20, // 20 to 320
     });
   }
+
 
   // Generate Vendors
   const vendorNames = ["Om sai enterprise", "Vishal agensises", "Khan C&F", "N sons agensises", "Bharat distributors"];
