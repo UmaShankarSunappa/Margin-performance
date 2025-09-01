@@ -140,8 +140,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     notFound();
   }
 
-  const { product, purchases, summary, panIndiaSummary, summaryLast3Months } = details;
-  const nonOutlierPurchases = purchases.filter(p => !p.isOutlier);
+  const { product, purchases, summary, panIndiaSummary, summaryLast3Months, monthlyAverages } = details;
   
   const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
 
@@ -254,20 +253,20 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Purchase Price Trend</CardTitle>
-                    <CardDescription>Price fluctuation over time (for the selected period).</CardDescription>
+                    <CardTitle>YTD Average Purchase Price</CardTitle>
+                    <CardDescription>Year-to-date monthly average purchase price trend.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ProductPriceTrendChart data={nonOutlierPurchases} />
+                    <ProductPriceTrendChart data={monthlyAverages} />
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader>
-                    <CardTitle>Margin Trend</CardTitle>
-                    <CardDescription>Margin % fluctuation over time (for the selected period).</CardDescription>
+                    <CardTitle>YTD Average Margin Trend</CardTitle>
+                    <CardDescription>Year-to-date monthly average margin percentage trend.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ProductMarginTrendChart data={nonOutlierPurchases} />
+                    <ProductMarginTrendChart data={monthlyAverages} />
                 </CardContent>
             </Card>
         </div>

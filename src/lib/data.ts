@@ -1,4 +1,4 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -174,7 +174,7 @@ export function getFinancialYearMonths(startYear = 2025) {
 
 export async function getAppData(
     geoFilters: { state?: string; city?: string, cityState?: string } = {},
-    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string } = {} // period is 'YYYY-MM'
+    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | '3m' | string } = {} // period is 'YYYY-MM'
 ): Promise<AppData> {
   let allPurchases = fullDataset.purchases;
 
@@ -354,9 +354,39 @@ export async function getProductDetails(
     const filteredPurchases = filteredData.processedPurchases.filter(p => p.productId === productId);
     const summaryForPeriod = filteredData.productsSummary.find(p => p.id === productId);
 
-    // Get data for the last 3 months for comparison
+    // Get data for the last 3 months for comparison KPI
     const last3MonthsData = await getAppData({ ...filters }, { customMultipliers, period: '3m' });
     const summaryLast3Months = last3MonthsData.productsSummary.find(p => p.id === productId);
+    
+    // Calculate YTD Monthly Averages for charts
+    const now = new Date();
+    const financialYearStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
+    
+    const allProductPurchasesYTD = (await getAppData({...filters, }, { customMultipliers, period: undefined }))
+      .processedPurchases
+      .filter(p => p.productId === productId && !p.isOutlier && parseISO(p.date) >= financialYearStart);
+      
+    const monthlyAverages: MonthlyAverage[] = [];
+    for(let i = 0; i < 12; i++){
+        const monthDate = new Date(financialYearStart.getFullYear(), financialYearStart.getMonth() + i, 1);
+        if (monthDate > now) break;
+
+        const monthPurchases = allProductPurchasesYTD.filter(p => {
+            const pDate = parseISO(p.date);
+            return pDate.getFullYear() === monthDate.getFullYear() && pDate.getMonth() === monthDate.getMonth();
+        });
+
+        if (monthPurchases.length > 0) {
+            const totalMargin = monthPurchases.reduce((acc, p) => acc + p.margin, 0);
+            const totalPrice = monthPurchases.reduce((acc, p) => acc + p.purchasePrice, 0);
+            monthlyAverages.push({
+                month: formatDate(monthDate, 'MMM'),
+                averageMargin: totalMargin / monthPurchases.length,
+                averagePrice: totalPrice / monthPurchases.length,
+            });
+        }
+    }
+
 
     let panIndiaSummary: ProductSummary | undefined = undefined;
     if (getPanIndiaData) {
@@ -369,7 +399,8 @@ export async function getProductDetails(
         purchases: filteredPurchases, 
         summary: summaryForPeriod, 
         summaryLast3Months,
-        panIndiaSummary 
+        panIndiaSummary,
+        monthlyAverages
     };
 }
 

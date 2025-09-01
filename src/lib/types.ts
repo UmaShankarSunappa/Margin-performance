@@ -76,6 +76,11 @@ export interface AppData {
   marginAnalysisSummary: MarginAnalysisProductSummary[];
 }
 
+export interface MonthlyAverage {
+  month: string;
+  averagePrice: number;
+  averageMargin: number;
+}
 
 export interface ProductDetails {
   product: Product;
@@ -83,4 +88,5 @@ export interface ProductDetails {
   summary: ProductSummary | undefined;
   summaryLast3Months?: ProductSummary;
   panIndiaSummary?: ProductSummary;
+  monthlyAverages: MonthlyAverage[];
 }
