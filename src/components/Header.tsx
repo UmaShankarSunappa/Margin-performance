@@ -40,14 +40,6 @@ export default function Header() {
             </Link>
             <h1 className="text-xl font-semibold">Margin Performance Dashboard</h1>
         </div>
-        <nav className="ml-auto flex items-center gap-2">
-            <Button variant="outline" asChild>
-                <Link href={getMarginAnalysisLink()}>
-                    <BarChartHorizontal className="mr-2 h-4 w-4" />
-                    Margin Analysis
-                </Link>
-            </Button>
-        </nav>
     </header>
   );
 }

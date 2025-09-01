@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -8,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin, Calendar } from "lucide-react";
+import { DollarSign, Package, Truck, MapPin, Calendar, BarChartHorizontal } from "lucide-react";
 
 import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
@@ -21,6 +22,8 @@ import type { AppData } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
+import { Button } from "@/components/ui/button";
+
 
 type Scope = 'pan-india' | 'state' | 'city';
 type DateRange = '1m' | '3m' | '6m' | '9m' | '1y';
@@ -134,6 +137,11 @@ export default function Home() {
         return 'Pan-India Dashboard';
     }
   };
+  
+  const getMarginAnalysisLink = () => {
+    const queryString = searchParams.toString();
+    return `/margin-analysis${queryString ? `?${queryString}` : ''}`;
+  }
 
   const topProductsByValue = data?.productsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
@@ -162,74 +170,85 @@ export default function Home() {
     <>
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
-          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-            <Select onValueChange={(value: DateRange) => handleDateRangeChange(value)} value={dateRange}>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                    <Calendar className="mr-2" />
-                    <SelectValue placeholder="Select Date Range" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="1m">Last 1 Month</SelectItem>
-                    <SelectItem value="3m">Last 3 Months</SelectItem>
-                    <SelectItem value="6m">Last 6 Months</SelectItem>
-                    <SelectItem value="9m">Last 9 Months</SelectItem>
-                    <SelectItem value="1y">Last 1 Year</SelectItem>
-                </SelectContent>
-            </Select>
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                    <Select onValueChange={(value: DateRange) => handleDateRangeChange(value)} value={dateRange}>
+                        <SelectTrigger className="w-full sm:w-[150px]">
+                            <Calendar className="mr-2" />
+                            <SelectValue placeholder="Select Date Range" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="1m">Last 1 Month</SelectItem>
+                            <SelectItem value="3m">Last 3 Months</SelectItem>
+                            <SelectItem value="6m">Last 6 Months</SelectItem>
+                            <SelectItem value="9m">Last 9 Months</SelectItem>
+                            <SelectItem value="1y">Last 1 Year</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-            <Select onValueChange={(value: Scope) => handleScopeChange(value)} value={scope}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <MapPin className="mr-2" />
-                <SelectValue placeholder="Select Scope" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pan-india">Pan India</SelectItem>
-                <SelectItem value="state">State-wise</SelectItem>
-                <SelectItem value="city">City-wise</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {scope === 'state' && (
-              <Select onValueChange={handleStateChange} value={selectedState}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Select State" />
-                </SelectTrigger>
-                <SelectContent>
-                  {geoLocations.states.map(state => (
-                      <SelectItem key={state} value={state}>{state}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {scope === 'city' && (
-              <>
-                 <Select onValueChange={handleCityStateChange} value={selectedCityState}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Select State" />
+                    <Select onValueChange={(value: Scope) => handleScopeChange(value)} value={scope}>
+                    <SelectTrigger className="w-full sm:w-[150px]">
+                        <MapPin className="mr-2" />
+                        <SelectValue placeholder="Select Scope" />
                     </SelectTrigger>
                     <SelectContent>
-                    {geoLocations.states.map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                    ))}
+                        <SelectItem value="pan-india">Pan India</SelectItem>
+                        <SelectItem value="state">State-wise</SelectItem>
+                        <SelectItem value="city">City-wise</SelectItem>
                     </SelectContent>
-                </Select>
-                <Select onValueChange={handleCityChange} value={selectedCity}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Select City" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {getCitiesForSelectedState().map(city => (
-                            <SelectItem key={city} value={city}>{city}</SelectItem>
+                    </Select>
+
+                    {scope === 'state' && (
+                    <Select onValueChange={handleStateChange} value={selectedState}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Select State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {geoLocations.states.map(state => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
                         ))}
-                    </SelectContent>
-                </Select>
-              </>
-            )}
-          </div>
+                        </SelectContent>
+                    </Select>
+                    )}
+
+                    {scope === 'city' && (
+                    <>
+                        <Select onValueChange={handleCityStateChange} value={selectedCityState}>
+                            <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Select State" />
+                            </SelectTrigger>
+                            <SelectContent>
+                            {geoLocations.states.map(state => (
+                                <SelectItem key={state} value={state}>{state}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <Select onValueChange={handleCityChange} value={selectedCity}>
+                            <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Select City" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {getCitiesForSelectedState().map(city => (
+                                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </>
+                    )}
+                </div>
+            </div>
+            <div className="flex justify-start">
+                <Button variant="outline" asChild>
+                    <Link href={getMarginAnalysisLink()}>
+                        <BarChartHorizontal className="mr-2 h-4 w-4" />
+                        Margin Analysis
+                    </Link>
+                </Button>
+            </div>
         </div>
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <KpiCard
             title="Total Margin Loss"
