@@ -1,4 +1,4 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -459,4 +459,25 @@ export async function getVendorDetails(vendorId: string) {
     }).sort((a, b) => a.productName.localeCompare(b.productName));
 
     return { vendor, summary, productsSummary: productsSummaryForVendor };
+}
+
+
+export async function getHomePageData(
+    geoFilters: { state?: string; city?: string, cityState?: string } = {},
+    period: 'mtd' | string
+): Promise<HomePageData> {
+    
+    const now = new Date();
+    
+    // Data for selected period
+    const periodData = await getAppData(geoFilters, { period });
+
+    // Data for last 3 months
+    const last3MonthsStartDate = startOfMonth(subMonths(now, 2));
+    const last3MonthsData = await getAppData(geoFilters, { startDate: last3MonthsStartDate, endDate: now });
+
+    return {
+        periodData,
+        last3MonthsData,
+    };
 }

@@ -12,17 +12,18 @@ import {
 import { DollarSign, Package, Truck, MapPin, Calendar, BarChartHorizontal } from "lucide-react";
 
 import Header from "@/components/Header";
-import { getAppData, getFinancialYearMonths } from "@/lib/data";
+import { getHomePageData, getFinancialYearMonths } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 import KpiCard from "@/components/dashboard/KPI";
 import ProductMarginLossChart from "@/components/charts/ProductMarginLossChart";
 import VendorMarginLossChart from "@/components/charts/VendorMarginLossChart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { AppData } from "@/lib/types";
+import type { HomePageData } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 
 type Scope = 'pan-india' | 'state' | 'city';
@@ -33,7 +34,7 @@ export default function Home() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [data, setData] = useState<AppData | null>(null);
+  const [data, setData] = useState<HomePageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // State initialization from URL or defaults
@@ -63,9 +64,9 @@ export default function Home() {
         if (city && cityState) filter = { city, state: cityState };
       }
       
-      const appData = await getAppData(filter, { period: currentPeriod });
+      const homePageData = await getHomePageData(filter, currentPeriod);
 
-      setData(appData);
+      setData(homePageData);
       setIsLoading(false);
     };
 
@@ -143,18 +144,6 @@ export default function Home() {
     return `/margin-analysis${queryString ? `?${queryString}` : ''}`;
   }
 
-  const topProductsByValue = data?.productsSummary
-    .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
-    .slice(0, 5) ?? [];
-
-  const topProductsByPercentage = data?.productsSummary
-    .sort((a, b) => b.marginLossPercentage - a.marginLossPercentage)
-    .slice(0, 5) ?? [];
-    
-  const topVendors = data?.vendorsSummary
-    .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
-    .slice(0, 5) ?? [];
-  
   if (isLoading || !data) {
     return (
         <div className="flex min-h-screen w-full flex-col">
@@ -164,6 +153,26 @@ export default function Home() {
             </div>
         </div>
     );
+  }
+
+  const { periodData, last3MonthsData } = data;
+
+  const topProductsByValue = periodData?.productsSummary
+    .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
+    .slice(0, 5) ?? [];
+
+  const topProductsByPercentage = periodData?.productsSummary
+    .sort((a, b) => b.marginLossPercentage - a.marginLossPercentage)
+    .slice(0, 5) ?? [];
+    
+  const topVendors = periodData?.vendorsSummary
+    .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
+    .slice(0, 5) ?? [];
+  
+  const getPeriodLabel = () => {
+    if (period === 'mtd') return "Current Month till Date";
+    const month = financialYearMonths.find(m => m.value === period);
+    return month ? month.label : "Selected Period";
   }
 
   return (
@@ -249,33 +258,72 @@ export default function Home() {
                 </Button>
             </div>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <KpiCard
-            title="Total Margin Loss"
-            value={formatCurrency(data.totalMarginLoss)}
-            description="Cumulative loss across all products"
-            icon={DollarSign}
-          />
-          <KpiCard
-            title="Total SKU's"
-            value={data.products.length.toString()}
-            description="Total unique products with purchases"
-            icon={Package}
-          />
-           <KpiCard
-            title="Total Vendors"
-            value={data.vendors.length.toString()}
-            description="Total unique vendors in the system"
-            icon={Truck}
-          />
+        
+        {/* KPIs for selected period */}
+        <div>
+            <div className="flex items-center gap-4 mb-4">
+                <Separator />
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Analysis for {getPeriodLabel()}</h2>
+                <Separator />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <KpiCard
+                title="Total Margin Loss"
+                value={formatCurrency(periodData.totalMarginLoss)}
+                description="Cumulative loss across all products"
+                icon={DollarSign}
+              />
+              <KpiCard
+                title="Total SKU's"
+                value={periodData.products.length.toString()}
+                description="Total unique products with purchases"
+                icon={Package}
+              />
+               <KpiCard
+                title="Total Vendors"
+                value={periodData.vendors.length.toString()}
+                description="Total unique vendors in the system"
+                icon={Truck}
+              />
+            </div>
         </div>
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+
+        {/* KPIs for last 3 months */}
+        <div className="mt-6">
+            <div className="flex items-center gap-4 mb-4">
+                <Separator />
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Analysis for Last 3 Months</h2>
+                <Separator />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <KpiCard
+                title="Total Margin Loss"
+                value={formatCurrency(last3MonthsData.totalMarginLoss)}
+                description="Cumulative loss across all products"
+                icon={DollarSign}
+              />
+              <KpiCard
+                title="Total SKU's"
+                value={last3MonthsData.products.length.toString()}
+                description="Total unique products with purchases"
+                icon={Package}
+              />
+               <KpiCard
+                title="Total Vendors"
+                value={last3MonthsData.vendors.length.toString()}
+                description="Total unique vendors in the system"
+                icon={Truck}
+              />
+            </div>
+        </div>
+
+
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-8">
             <Card>
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (Value)</CardTitle>
                 <CardDescription>
-                  Products with the highest margin loss compared to benchmark prices.
+                  Products with the highest margin loss for {getPeriodLabel()}.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -286,7 +334,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (%)</CardTitle>
                 <CardDescription>
-                  Products with the highest margin loss percentage.
+                  Products with the highest margin loss percentage for {getPeriodLabel()}.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -297,7 +345,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Top 5 Vendors by Margin Loss</CardTitle>
                 <CardDescription>
-                  Vendors associated with the highest total margin loss.
+                  Vendors associated with the highest total margin loss for {getPeriodLabel()}.
                 </CardDescription>
               </CardHeader>
               <CardContent>

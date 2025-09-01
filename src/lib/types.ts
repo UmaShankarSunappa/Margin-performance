@@ -76,6 +76,11 @@ export interface AppData {
   marginAnalysisSummary: MarginAnalysisProductSummary[];
 }
 
+export interface HomePageData {
+    periodData: AppData;
+    last3MonthsData: AppData;
+}
+
 export interface MonthlyAverage {
   month: string;
   averagePrice: number;
