@@ -172,7 +172,9 @@ export default function Home() {
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
+                 <div className="flex-1">
+                    <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
+                </div>
                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                     <Select onValueChange={(value: DateRange) => handleDateRangeChange(value)} value={dateRange}>
                         <SelectTrigger className="w-full sm:w-[150px]">
@@ -239,7 +241,7 @@ export default function Home() {
                     )}
                 </div>
             </div>
-            <div className="flex justify-start">
+            <div className="flex justify-end">
                 <Button variant="outline" asChild>
                     <Link href={getMarginAnalysisLink()}>
                         <BarChartHorizontal className="mr-2 h-4 w-4" />
