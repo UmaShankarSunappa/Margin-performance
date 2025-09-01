@@ -155,7 +155,7 @@ export default function Home() {
     );
   }
 
-  const { periodData, last3MonthsData } = data;
+  const { periodData, last4MonthsData } = data;
 
   const topProductsByValue = periodData?.productsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
@@ -259,58 +259,29 @@ export default function Home() {
             </div>
         </div>
         
-        {/* KPIs for selected period */}
-        <div>
-            <div className="flex items-center gap-4 mb-4">
-                <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Analysis for {getPeriodLabel()}</h2>
-                <Separator />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <KpiCard
-                title="Total Margin Loss"
-                value={formatCurrency(periodData.totalMarginLoss)}
-                description="Cumulative loss across all products"
-                icon={DollarSign}
-              />
-              <KpiCard
-                title="Total SKU's"
-                value={periodData.products.length.toString()}
-                description="Total unique products with purchases"
-                icon={Package}
-              />
-               <KpiCard
-                title="Total Vendors"
-                value={periodData.vendors.length.toString()}
-                description="Total unique vendors in the system"
-                icon={Truck}
-              />
-            </div>
-        </div>
-
-        {/* KPIs for last 3 months */}
+        {/* KPIs for last 4 months */}
         <div className="mt-6">
             <div className="flex items-center gap-4 mb-4">
                 <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Analysis for Last 3 Months</h2>
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Analysis for Current Month & Last 3 Months</h2>
                 <Separator />
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <KpiCard
                 title="Total Margin Loss"
-                value={formatCurrency(last3MonthsData.totalMarginLoss)}
+                value={formatCurrency(last4MonthsData.totalMarginLoss)}
                 description="Cumulative loss across all products"
                 icon={DollarSign}
               />
               <KpiCard
                 title="Total SKU's"
-                value={last3MonthsData.products.length.toString()}
+                value={last4MonthsData.products.length.toString()}
                 description="Total unique products with purchases"
                 icon={Package}
               />
                <KpiCard
                 title="Total Vendors"
-                value={last3MonthsData.vendors.length.toString()}
+                value={last4MonthsData.vendors.length.toString()}
                 description="Total unique vendors in the system"
                 icon={Truck}
               />

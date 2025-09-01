@@ -469,15 +469,15 @@ export async function getHomePageData(
     
     const now = new Date();
     
-    // Data for selected period
+    // Data for selected period for the charts
     const periodData = await getAppData(geoFilters, { period });
 
-    // Data for last 3 months
-    const last3MonthsStartDate = startOfMonth(subMonths(now, 2));
-    const last3MonthsData = await getAppData(geoFilters, { startDate: last3MonthsStartDate, endDate: now });
+    // Data for last 4 months for the KPIs
+    const last4MonthsStartDate = startOfMonth(subMonths(now, 3));
+    const last4MonthsData = await getAppData(geoFilters, { startDate: last4MonthsStartDate, endDate: now });
 
     return {
         periodData,
-        last3MonthsData,
+        last4MonthsData,
     };
 }
