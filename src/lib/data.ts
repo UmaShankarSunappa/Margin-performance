@@ -1,5 +1,5 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary } from "@/lib/types";
-import { parseISO, startOfYear, subMonths, isAfter } from 'date-fns';
+import { parseISO, startOfYear, subMonths, isAfter, subYears } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
 function getMode(arr: number[]): number | undefined {
@@ -127,14 +127,34 @@ function generateData() {
 const fullDataset = generateData();
 
 
-export async function getAppData(filters: { state?: string; city?: string, cityState?: string, customModes?: Record<string, number> } = {}): Promise<AppData> {
-  let filteredPurchases = fullDataset.purchases;
+export async function getAppData(
+    geoFilters: { state?: string; city?: string, cityState?: string } = {},
+    options: { customModes?: Record<string, number>, dateRange?: '1m' | '3m' | '6m' | '9m' | '1y' } = {}
+): Promise<AppData> {
+  let allPurchases = fullDataset.purchases;
+
+  // Time-based filtering
+  if (options.dateRange) {
+    const now = new Date();
+    let startDate: Date;
+    switch(options.dateRange) {
+        case '1m': startDate = subMonths(now, 1); break;
+        case '3m': startDate = subMonths(now, 3); break;
+        case '6m': startDate = subMonths(now, 6); break;
+        case '9m': startDate = subMonths(now, 9); break;
+        case '1y': startDate = subYears(now, 1); break;
+        default: startDate = subYears(now, 1); // Default to 1 year
+    }
+    allPurchases = allPurchases.filter(p => isAfter(parseISO(p.date), startDate));
+  }
+  
+  let filteredPurchases = allPurchases;
 
   // Correct filtering logic. Use cityState for city filtering.
-  if (filters.city && filters.state) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.city === filters.city && p.state === filters.state);
-  } else if (filters.state) {
-    filteredPurchases = fullDataset.purchases.filter(p => p.state === filters.state);
+  if (geoFilters.city && geoFilters.state) {
+    filteredPurchases = allPurchases.filter(p => p.city === geoFilters.city && p.state === geoFilters.state);
+  } else if (geoFilters.state) {
+    filteredPurchases = allPurchases.filter(p => p.state === geoFilters.state);
   }
 
   const productIdsInScope = new Set(filteredPurchases.map(p => p.productId));
@@ -147,7 +167,7 @@ export async function getAppData(filters: { state?: string; city?: string, cityS
   const vendorMap = new Map(fullDataset.vendors.map(v => [v.id, v]));
 
   // Step 1: Calculate margin for ALL purchases to establish global benchmarks
-  const allPurchasesWithMargin = fullDataset.purchases.map(purchase => {
+  const allPurchasesWithMargin = allPurchases.map(purchase => {
     const product = productMap.get(purchase.productId)!;
     const margin = ((product.sellingPrice - purchase.purchasePrice) / product.sellingPrice) * 100;
     return { ...purchase, margin };
@@ -156,12 +176,17 @@ export async function getAppData(filters: { state?: string; city?: string, cityS
   // Step 2: For each product, calculate global mode, identify outliers, and find the best margin from non-outliers
   const productBenchmarks = new Map<string, { mode: number, bestMargin: number, bestPrice: number }>();
   for (const product of fullDataset.products) {
-      const productPurchases = allPurchasesWithMargin.filter(p => p.productId === product.id);
+      // Use ALL purchases for benchmark calculation, not just time-filtered ones
+      const productPurchases = fullDataset.purchases.map(p => ({
+          ...p,
+          margin: ((productMap.get(p.productId)!.sellingPrice - p.purchasePrice) / productMap.get(p.productId)!.sellingPrice) * 100
+      })).filter(p => p.productId === product.id);
+
       if (productPurchases.length === 0) continue;
 
       const margins = productPurchases.map(p => p.margin);
       
-      const modeMargin = filters.customModes?.[product.id] ?? getMode(margins.map(m => parseFloat(m.toFixed(2)))) ?? 0;
+      const modeMargin = options.customModes?.[product.id] ?? getMode(margins.map(m => parseFloat(m.toFixed(2)))) ?? 0;
       
       const outlierThreshold = 4 * modeMargin;
 
@@ -316,7 +341,7 @@ export async function getProductDetails(
     if (!product) return null;
 
     // Get data for the filtered scope
-    const filteredData = await getAppData({ ...filters, customModes });
+    const filteredData = await getAppData({ ...filters }, {customModes});
     const filteredPurchases = filteredData.processedPurchases.filter(p => p.productId === productId);
     const filteredSummary = filteredData.productsSummary.find(p => p.id === productId);
 
@@ -324,7 +349,7 @@ export async function getProductDetails(
 
     // If requested, get Pan-India data for comparison
     if (getPanIndiaData) {
-        const panIndiaData = await getAppData({ customModes }); // No geo filters
+        const panIndiaData = await getAppData({}, { customModes }); // No geo filters
         panIndiaSummary = panIndiaData.productsSummary.find(p => p.id === productId);
     }
     

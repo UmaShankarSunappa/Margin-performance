@@ -70,12 +70,14 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     const state = searchParams.get('state');
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
+    const range = searchParams.get('range');
 
     const params = new URLSearchParams();
     if(scope) params.set('scope', scope);
     if(state) params.set('state', state);
     if(city) params.set('city', city);
     if(cityState) params.set('cityState', cityState);
+    if(range) params.set('range', range);
     
     const queryString = params.toString();
 

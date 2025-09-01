@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin } from "lucide-react";
+import { DollarSign, Package, Truck, MapPin, Calendar } from "lucide-react";
 
 import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
@@ -23,6 +23,7 @@ import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
 
 type Scope = 'pan-india' | 'state' | 'city';
+type DateRange = '1m' | '3m' | '6m' | '9m' | '1y';
 
 export default function Home() {
   const router = useRouter();
@@ -37,6 +38,8 @@ export default function Home() {
   const [selectedState, setSelectedState] = useState<string>(() => searchParams.get('state') || 'Telangana');
   const [selectedCityState, setSelectedCityState] = useState<string>(() => searchParams.get('cityState') || 'Telangana');
   const [selectedCity, setSelectedCity] = useState<string>(() => searchParams.get('city') || 'Hyderabad');
+  const [dateRange, setDateRange] = useState<DateRange>(() => (searchParams.get('range') as DateRange) || '1y');
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,7 +48,8 @@ export default function Home() {
       
       let filter: { state?: string, city?: string, cityState?: string } = {};
       const currentScope = params.get('scope') as Scope || 'pan-india';
-      
+      const currentRange = params.get('range') as DateRange || '1y';
+
       if (currentScope === 'state') {
         const state = params.get('state');
         if (state) filter.state = state;
@@ -55,7 +59,7 @@ export default function Home() {
         if (city && cityState) filter = { city, state: cityState };
       }
       
-      const appData = await getAppData(filter);
+      const appData = await getAppData(filter, {dateRange: currentRange});
 
       setData(appData);
       setIsLoading(false);
@@ -65,10 +69,12 @@ export default function Home() {
   }, [searchParams]);
 
   const updateUrlParams = (newParams: Record<string, string | null>) => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams);
     Object.entries(newParams).forEach(([key, value]) => {
       if (value) {
         params.set(key, value);
+      } else {
+        params.delete(key);
       }
     });
     router.push(`${pathname}?${params.toString()}`);
@@ -76,19 +82,21 @@ export default function Home() {
 
   const handleScopeChange = (value: Scope) => {
     setScope(value);
-    const newParams: Record<string, string | null> = { scope: value };
+    const newParams: Record<string, string | null> = { scope: value, state: null, city: null, cityState: null };
     if (value === 'state') {
       newParams.state = selectedState;
     } else if (value === 'city') {
        newParams.cityState = selectedCityState;
        newParams.city = selectedCity;
     }
+    // keep dateRange
+    newParams.range = dateRange;
     updateUrlParams(newParams);
   };
   
   const handleStateChange = (state: string) => {
       setSelectedState(state);
-      updateUrlParams({ scope: 'state', state: state });
+      updateUrlParams({ scope: 'state', state: state, city: null, cityState: null, range: dateRange });
   }
 
   const handleCityStateChange = (state: string) => {
@@ -96,14 +104,21 @@ export default function Home() {
     const citiesForNewState = geoLocations.citiesByState[state] || [];
     const newCity = citiesForNewState.length > 0 ? citiesForNewState[0] : '';
     setSelectedCity(newCity);
-    updateUrlParams({ scope: 'city', cityState: state, city: newCity });
+    updateUrlParams({ scope: 'city', cityState: state, city: newCity, state: null, range: dateRange });
   };
 
   const handleCityChange = (city: string) => {
       setSelectedCity(city);
-      updateUrlParams({ scope: 'city', cityState: selectedCityState, city });
+      updateUrlParams({ scope: 'city', cityState: selectedCityState, city, state: null, range: dateRange });
   }
   
+  const handleDateRangeChange = (value: DateRange) => {
+    setDateRange(value);
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set('range', value);
+    router.push(`${pathname}?${currentParams.toString()}`);
+  }
+
   const getCitiesForSelectedState = () => {
       return geoLocations.citiesByState[selectedCityState] || [];
   }
@@ -150,6 +165,20 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+            <Select onValueChange={(value: DateRange) => handleDateRangeChange(value)} value={dateRange}>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                    <Calendar className="mr-2" />
+                    <SelectValue placeholder="Select Date Range" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="1m">Last 1 Month</SelectItem>
+                    <SelectItem value="3m">Last 3 Months</SelectItem>
+                    <SelectItem value="6m">Last 6 Months</SelectItem>
+                    <SelectItem value="9m">Last 9 Months</SelectItem>
+                    <SelectItem value="1y">Last 1 Year</SelectItem>
+                </SelectContent>
+            </Select>
+
             <Select onValueChange={(value: Scope) => handleScopeChange(value)} value={scope}>
               <SelectTrigger className="w-full sm:w-[150px]">
                 <MapPin className="mr-2" />
