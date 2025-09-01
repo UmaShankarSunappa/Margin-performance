@@ -218,6 +218,7 @@ export async function getAppData(
   const productMap = new Map(fullDataset.products.map(p => [p.id, p]));
   const vendorMap = new Map(fullDataset.vendors.map(v => [v.id, v]));
 
+  // Calculate margins for all purchases globally first to establish benchmarks
   const allPurchasesWithMargin = allPurchases.map(purchase => {
     const product = productMap.get(purchase.productId)!;
     const margin = ((product.sellingPrice - purchase.purchasePrice) / product.sellingPrice) * 100;
@@ -226,6 +227,7 @@ export async function getAppData(
 
   const productBenchmarks = new Map<string, { mode: number, bestMargin: number, bestPrice: number }>();
   for (const product of fullDataset.products) {
+      // Benchmark should be calculated on the entire history to find the true best margin
       const productPurchases = allPurchasesWithMargin.filter(p => p.productId === product.id);
       if (productPurchases.length === 0) continue;
 
@@ -282,12 +284,13 @@ export async function getAppData(
 
     const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     const totalPurchaseValue = nonOutlierPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
-    const benchmark = productBenchmarks.get(product.id);
-    const bestMarginFromBenchmark = benchmark?.bestMargin || 0;
-    const modeMargin = benchmark?.mode || 0;
     
-    const bestMarginPurchase = nonOutlierPurchases.sort((a,b) => b.margin - a.margin)[0];
+    // The benchmark is global, but the actual best margin for the period should be from the period's data.
+    const bestMarginForPeriod = Math.max(...nonOutlierPurchases.map(p => p.margin));
+    const bestMarginPurchase = nonOutlierPurchases.find(p => p.margin === bestMarginForPeriod)!;
     const worstMarginPurchase = nonOutlierPurchases.sort((a,b) => a.margin - b.margin)[0];
+    const benchmark = productBenchmarks.get(product.id);
+    const modeMargin = benchmark?.mode || 0;
     
     return {
       id: product.id,
@@ -296,7 +299,7 @@ export async function getAppData(
       totalMarginLoss,
       purchaseCount: nonOutlierPurchases.length,
       averageMargin: nonOutlierPurchases.length > 0 ? nonOutlierPurchases.reduce((acc, p) => acc + p.margin, 0) / nonOutlierPurchases.length : 0,
-      bestMargin: bestMarginFromBenchmark,
+      bestMargin: bestMarginForPeriod,
       totalQuantityPurchased: nonOutlierPurchases.reduce((acc, p) => acc + p.quantity, 0),
       worstMargin: worstMarginPurchase.margin,
       bestVendor: {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name },
@@ -323,7 +326,13 @@ export async function getAppData(
     const vendorIds = new Set(nonOutlierPurchases.map(p => p.vendorId));
     const baseSummary = productsSummary.find(ps => ps.id === product.id);
     if (!baseSummary) return null;
-    return { ...baseSummary, purchaseCount: nonOutlierPurchases.length, marginLossPercentage, vendorCount: vendorIds.size };
+
+    const globalBenchmark = productBenchmarks.get(product.id);
+    if (!globalBenchmark) return null;
+    // We want to show the global best margin in the analysis drill down, for comparison.
+    const enhancedBaseSummary = { ...baseSummary, bestMargin: globalBenchmark.bestMargin };
+
+    return { ...enhancedBaseSummary, purchaseCount: nonOutlierPurchases.length, marginLossPercentage, vendorCount: vendorIds.size };
   }).filter((p): p is MarginAnalysisProductSummary => p !== null);
 
   return {
@@ -348,8 +357,6 @@ export async function getProductDetails(
     const product = fullDataset.products.find(p => p.id === productId);
     if (!product) return null;
 
-    // --- KPIs and Purchase History Logic ---
-    // Show data for selected month + previous 3 months.
     const now = new Date();
     let historyEndDate: Date;
     let historyStartDate: Date;
@@ -400,7 +407,10 @@ export async function getProductDetails(
 
     let panIndiaSummary: ProductSummary | undefined = undefined;
     if (getPanIndiaData) {
-        const panIndiaData = await getAppData({}, { customMultipliers, period }); // No geo filters, but use the same period
+         const panIndiaHistoryEndDate = period === 'mtd' ? startOfToday() : endOfMonth(parseISO(`${period}-01`));
+         const panIndiaHistoryStartDate = startOfMonth(subMonths(panIndiaHistoryEndDate, 3));
+        
+        const panIndiaData = await getAppData({}, { customMultipliers, startDate: panIndiaHistoryStartDate, endDate: panIndiaHistoryEndDate });
         panIndiaSummary = panIndiaData.productsSummary.find(p => p.id === productId);
     }
     
