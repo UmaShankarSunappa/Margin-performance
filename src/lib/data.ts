@@ -1,5 +1,5 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary } from "@/lib/types";
-import { parseISO, startOfYear, subMonths, isAfter, subYears } from 'date-fns';
+import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
 function getMode(arr: number[]): number | undefined {
@@ -129,13 +129,15 @@ const fullDataset = generateData();
 
 export async function getAppData(
     geoFilters: { state?: string; city?: string, cityState?: string } = {},
-    options: { customModes?: Record<string, number>, dateRange?: '1m' | '3m' | '6m' | '9m' | '1y' } = {}
+    options: { customMultipliers?: Record<string, number>, dateRange?: '1m' | '3m' | '6m' | '9m' | '1y', period?: 'fy' | '3m' } = {}
 ): Promise<AppData> {
   let allPurchases = fullDataset.purchases;
 
   // Time-based filtering
+  const now = new Date();
+  let timeFilteredPurchases = allPurchases;
+
   if (options.dateRange) {
-    const now = new Date();
     let startDate: Date;
     switch(options.dateRange) {
         case '1m': startDate = subMonths(now, 1); break;
@@ -143,18 +145,46 @@ export async function getAppData(
         case '6m': startDate = subMonths(now, 6); break;
         case '9m': startDate = subMonths(now, 9); break;
         case '1y': startDate = subYears(now, 1); break;
-        default: startDate = subYears(now, 1); // Default to 1 year
+        default: startDate = subYears(now, 10); // Default to a long time ago if not specified
     }
-    allPurchases = allPurchases.filter(p => isAfter(parseISO(p.date), startDate));
+    timeFilteredPurchases = allPurchases.filter(p => isAfter(parseISO(p.date), startDate));
   }
   
-  let filteredPurchases = allPurchases;
+  if (options.period) {
+    let periodStartDate: Date;
+    let periodEndDate: Date | null = null;
+    
+    if (options.period === '3m') {
+        periodStartDate = subMonths(now, 3);
+    } else { // 'fy'
+        const currentMonth = now.getMonth(); // 0-11 (Jan-Dec)
+        const currentYear = now.getFullYear();
+        if (currentMonth >= 3) { // April (month 3) onwards
+            periodStartDate = new Date(currentYear, 3, 1); // April 1 of current year
+        } else { // Jan, Feb, March (months 0, 1, 2)
+            periodStartDate = new Date(currentYear - 1, 3, 1); // April 1 of previous year
+        }
+        periodEndDate = sub(periodStartDate, { years: -1, days: -1 }); // End of March next year
+    }
+
+    timeFilteredPurchases = allPurchases.filter(p => {
+        const purchaseDate = parseISO(p.date);
+        if (periodEndDate) { // Financial year
+            return isWithinInterval(purchaseDate, { start: periodStartDate, end: periodEndDate });
+        } else { // Last 3 months
+            return purchaseDate >= periodStartDate;
+        }
+    });
+  }
+
+  
+  let filteredPurchases = timeFilteredPurchases;
 
   // Correct filtering logic. Use cityState for city filtering.
   if (geoFilters.city && geoFilters.state) {
-    filteredPurchases = allPurchases.filter(p => p.city === geoFilters.city && p.state === geoFilters.state);
+    filteredPurchases = timeFilteredPurchases.filter(p => p.city === geoFilters.city && p.state === geoFilters.state);
   } else if (geoFilters.state) {
-    filteredPurchases = allPurchases.filter(p => p.state === geoFilters.state);
+    filteredPurchases = timeFilteredPurchases.filter(p => p.state === geoFilters.state);
   }
 
   const productIdsInScope = new Set(filteredPurchases.map(p => p.productId));
@@ -177,18 +207,16 @@ export async function getAppData(
   const productBenchmarks = new Map<string, { mode: number, bestMargin: number, bestPrice: number }>();
   for (const product of fullDataset.products) {
       // Use ALL purchases for benchmark calculation, not just time-filtered ones
-      const productPurchases = fullDataset.purchases.map(p => ({
-          ...p,
-          margin: ((productMap.get(p.productId)!.sellingPrice - p.purchasePrice) / productMap.get(p.productId)!.sellingPrice) * 100
-      })).filter(p => p.productId === product.id);
+      const productPurchases = allPurchasesWithMargin.filter(p => p.productId === product.id);
 
       if (productPurchases.length === 0) continue;
 
       const margins = productPurchases.map(p => p.margin);
       
-      const modeMargin = options.customModes?.[product.id] ?? getMode(margins.map(m => parseFloat(m.toFixed(2)))) ?? 0;
+      const modeMargin = getMode(margins.map(m => parseFloat(m.toFixed(2)))) ?? 0;
+      const multiplier = options.customMultipliers?.[product.id] ?? 4.0;
       
-      const outlierThreshold = 4 * modeMargin;
+      const outlierThreshold = multiplier * modeMargin;
 
       const nonOutlierPurchases = productPurchases.filter(p => p.margin < outlierThreshold);
       
@@ -219,7 +247,8 @@ export async function getAppData(
     }
 
     const { mode, bestMargin, bestPrice } = benchmark;
-    const outlierThreshold = 4 * mode;
+    const multiplier = options.customMultipliers?.[p.productId] ?? 4.0;
+    const outlierThreshold = multiplier * mode;
     const isOutlier = margin >= outlierThreshold;
 
     let marginLoss = 0;
@@ -334,14 +363,14 @@ export async function getAppData(
 export async function getProductDetails(
     productId: string, 
     filters: { state?: string; city?: string, cityState?:string } = {}, 
-    customModes?: Record<string, number>,
+    customMultipliers?: Record<string, number>,
     getPanIndiaData: boolean = false
 ): Promise<ProductDetails | null> {
     const product = fullDataset.products.find(p => p.id === productId);
     if (!product) return null;
 
     // Get data for the filtered scope
-    const filteredData = await getAppData({ ...filters }, {customModes});
+    const filteredData = await getAppData({ ...filters }, {customMultipliers});
     const filteredPurchases = filteredData.processedPurchases.filter(p => p.productId === productId);
     const filteredSummary = filteredData.productsSummary.find(p => p.id === productId);
 
@@ -349,7 +378,7 @@ export async function getProductDetails(
 
     // If requested, get Pan-India data for comparison
     if (getPanIndiaData) {
-        const panIndiaData = await getAppData({}, { customModes }); // No geo filters
+        const panIndiaData = await getAppData({}, { customMultipliers }); // No geo filters
         panIndiaSummary = panIndiaData.productsSummary.find(p => p.id === productId);
     }
     

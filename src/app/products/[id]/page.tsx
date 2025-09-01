@@ -1,7 +1,7 @@
 'use client';
 import { notFound, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, ShoppingBag, Truck, Edit, Lock } from "lucide-react";
+import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, ShoppingBag, Truck, Edit, Lock, Trash2, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -17,7 +17,7 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { Product, ProcessedPurchase, ProductSummary, ProductDetails } from "@/lib/types";
 import { useEffect, useState, useMemo } from "react";
 import Loading from "@/app/loading";
-import { ModeAdjustmentDialog } from "@/components/dialogs/ModeAdjustmentDialog";
+import { MultiplierAdjustmentDialog } from "@/components/dialogs/MultiplierAdjustmentDialog";
 import { Separator } from "@/components/ui/separator";
 
 type ProductDetailPageProps = {
@@ -31,7 +31,8 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const [details, setDetails] = useState<ProductDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [customModes, setCustomModes] = useState<Record<string, number>>({});
+  const [customMultipliers, setCustomMultipliers] = useState<Record<string, number>>({});
+  const [showHistory, setShowHistory] = useState(true);
   
   const initialScope = searchParams.get('scope');
   const [showPanIndia, setShowPanIndia] = useState(false);
@@ -54,14 +55,14 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
   useEffect(() => {
     setIsLoading(true);
-    getProductDetails(params.id, filters, customModes, showPanIndia).then(data => {
+    getProductDetails(params.id, filters, customMultipliers, showPanIndia).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, customModes, filters, showPanIndia]);
+  }, [params.id, customMultipliers, filters, showPanIndia]);
 
-  const handleModeSave = (newMode: number) => {
-    setCustomModes(prev => ({ ...prev, [params.id]: newMode }));
+  const handleMultiplierSave = (newMultiplier: number) => {
+    setCustomMultipliers(prev => ({ ...prev, [params.id]: newMultiplier }));
     setIsModalOpen(false);
   };
 
@@ -207,23 +208,42 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                         Displaying purchase records for the selected scope. Pan-India comparison only affects KPIs above.
                     </CardDescription>
                 </div>
-                <Button variant="outline" onClick={() => setIsModalOpen(true)}>
-                    <Edit className="mr-2" />
-                    Adjust Mode
-                </Button>
+                <div className="flex items-center gap-2">
+                    {showHistory ? (
+                        <Button variant="outline" onClick={() => setShowHistory(false)}>
+                            <Trash2 className="mr-2" />
+                            Clear History
+                        </Button>
+                    ) : (
+                         <Button variant="outline" onClick={() => setShowHistory(true)}>
+                            <Eye className="mr-2" />
+                            Show History
+                        </Button>
+                    )}
+                    <Button variant="outline" onClick={() => setIsModalOpen(true)}>
+                        <Edit className="mr-2" />
+                        Adjust Multiplier
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
-                <ProductPurchasesTable purchases={purchases} />
+                {showHistory ? (
+                    <ProductPurchasesTable purchases={purchases} />
+                ) : (
+                    <div className="text-center py-10">
+                        <p className="text-muted-foreground">Purchase history cleared. Click "Show History" to view it again.</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
       </main>
       
-      <ModeAdjustmentDialog
+      <MultiplierAdjustmentDialog
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSave={handleModeSave}
+        onSave={handleMultiplierSave}
         productName={product.name}
-        currentMode={summary?.modeMargin || 0}
+        currentMultiplier={customMultipliers[params.id] || 4.0}
       />
     </>
   );

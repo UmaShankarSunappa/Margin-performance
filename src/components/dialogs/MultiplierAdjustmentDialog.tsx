@@ -13,32 +13,31 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatNumber } from "@/lib/utils";
 
-interface ModeAdjustmentDialogProps {
+interface MultiplierAdjustmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (newMode: number) => void;
+  onSave: (newMultiplier: number) => void;
   productName: string;
-  currentMode: number;
+  currentMultiplier: number;
 }
 
-export function ModeAdjustmentDialog({ isOpen, onClose, onSave, productName, currentMode }: ModeAdjustmentDialogProps) {
-  const [mode, setMode] = useState(currentMode);
+export function MultiplierAdjustmentDialog({ isOpen, onClose, onSave, productName, currentMultiplier }: MultiplierAdjustmentDialogProps) {
+  const [multiplier, setMultiplier] = useState(currentMultiplier);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setMode(currentMode);
-  }, [currentMode, isOpen]);
+    setMultiplier(currentMultiplier);
+  }, [currentMultiplier, isOpen]);
 
   const handleSave = () => {
-    const numericMode = parseFloat(mode.toString());
-    if (isNaN(numericMode) || numericMode < 0) {
-      setError("Please enter a valid, non-negative number for the mode.");
+    const numericMultiplier = parseFloat(multiplier.toString());
+    if (isNaN(numericMultiplier) || numericMultiplier <= 0) {
+      setError("Please enter a valid, positive number for the multiplier.");
       return;
     }
     setError("");
-    onSave(numericMode);
+    onSave(numericMultiplier);
   };
 
   const handleClose = () => {
@@ -50,25 +49,26 @@ export function ModeAdjustmentDialog({ isOpen, onClose, onSave, productName, cur
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Adjust Mode for {productName}</DialogTitle>
+          <DialogTitle>Adjust Outlier Multiplier for {productName}</DialogTitle>
           <DialogDescription>
-            Manually override the calculated mode margin (M) for this SKU. This will update the outlier threshold, best margin, and all margin loss calculations.
+            Manually override the outlier threshold multiplier for this SKU. The outlier threshold is calculated as (Mode Margin % * Multiplier).
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <p className="text-sm text-muted-foreground">
-            The current calculated mode is <strong>{formatNumber(currentMode)}%</strong>.
+            The current multiplier is <strong>{currentMultiplier}x</strong>.
           </p>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="mode" className="text-right">
-              New Mode (%)
+            <Label htmlFor="multiplier" className="text-right">
+              New Multiplier
             </Label>
             <Input
-              id="mode"
+              id="multiplier"
               type="number"
-              value={mode}
-              onChange={(e) => setMode(Number(e.target.value))}
+              value={multiplier}
+              onChange={(e) => setMultiplier(Number(e.target.value))}
               className="col-span-3"
+              step="0.1"
             />
           </div>
           {error && <p className="text-sm text-destructive col-span-4 text-center">{error}</p>}
