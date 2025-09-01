@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from '@/lib/utils';
+import { format, parse } from 'date-fns';
 
 
 function MarginAnalysisContent() {
@@ -107,10 +108,27 @@ function MarginAnalysisContent() {
         router.push(`/products/${productId}?${params.toString()}`);
     }
     
+    const getFormattedPeriod = () => {
+        if (!period) return '';
+        if (period === 'mtd') return ' (Current Month till Date)';
+        try {
+            const date = parse(period, 'yyyy-MM', new Date());
+            return ` (for ${format(date, 'MMMM yyyy')})`;
+        } catch (e) {
+            return '';
+        }
+    };
+    
     const getPageTitle = () => {
-      if (scope === 'city' && city && cityState) return `Product Margin Loss Analysis for ${city}, ${cityState}`;
-      if (scope === 'state' && state) return `Product Margin Loss Analysis for ${state}`;
-      return 'Pan-India Product Margin Loss Analysis';
+      let baseTitle = '';
+      if (scope === 'city' && city && cityState) {
+        baseTitle = `Product Margin Loss Analysis for ${city}, ${cityState}`;
+      } else if (scope === 'state' && state) {
+        baseTitle = `Product Margin Loss Analysis for ${state}`;
+      } else {
+        baseTitle = 'Pan-India Product Margin Loss Analysis';
+      }
+      return `${baseTitle}${getFormattedPeriod()}`;
     }
 
     return (

@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 
 
 import Header from "@/components/Header";
@@ -128,8 +128,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     
     const queryString = params.toString();
 
-    // If we came from a filtered dashboard, go back there. Otherwise, go to margin analysis.
-    if (scope === 'state' || scope === 'city' || period) return `/?${queryString}`;
+    // Go back to margin analysis as it's the previous drill down step
     return `/margin-analysis?${queryString}`;
   }
 
@@ -146,13 +145,29 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   
   const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
 
+  const getFormattedPeriod = () => {
+      if (!period) return '';
+      if (period === 'mtd') return ' (Current Month till Date)';
+      try {
+          const date = parse(period, 'yyyy-MM', new Date());
+          return ` (for ${format(date, 'MMMM yyyy')})`;
+      } catch (e) {
+          return '';
+      }
+  };
+
   const getPageTitle = () => {
-    if (!isFilterActive || showPanIndia) return `Analysis for ${product.name}`;
-    const state = searchParams.get('state') || searchParams.get('cityState');
-    const city = searchParams.get('city');
-    if(city) return `${product.name} - Analysis for ${city}, ${state}`;
-    if(state) return `${product.name} - Analysis for ${state}`;
-    return product.name;
+    let baseTitle = `Analysis for ${product.name}`;
+    if (!showPanIndia) {
+      const state = searchParams.get('state') || searchParams.get('cityState');
+      const city = searchParams.get('city');
+      if (city) {
+        baseTitle = `${product.name} - Analysis for ${city}, ${state}`;
+      } else if (state) {
+        baseTitle = `${product.name} - Analysis for ${state}`;
+      }
+    }
+     return `${baseTitle}${getFormattedPeriod()}`;
   }
   
   const maskVendor = panIndiaSummary && summary && panIndiaSummary.bestVendor?.id !== summary.bestVendor?.id;
