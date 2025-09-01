@@ -24,6 +24,7 @@ import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { format, parse, startOfMonth, subMonths } from "date-fns";
 
 
 type Scope = 'pan-india' | 'state' | 'city';
@@ -143,6 +144,19 @@ export default function Home() {
     const queryString = searchParams.toString();
     return `/margin-analysis${queryString ? `?${queryString}` : ''}`;
   }
+  
+  const getAnalysisPeriodTitle = () => {
+      if (period === 'mtd') {
+        return `Analysis for Current Month & Last 3 Months`;
+      }
+      try {
+          const date = parse(period, 'yyyy-MM', new Date());
+          const startDate = startOfMonth(subMonths(date, 3));
+          return `Analysis for ${format(startDate, 'MMM yyyy')} - ${format(date, 'MMM yyyy')}`;
+      } catch(e) {
+        return 'Analysis for Selected Period';
+      }
+  };
 
   if (isLoading || !data) {
     return (
@@ -155,17 +169,17 @@ export default function Home() {
     );
   }
 
-  const { last4MonthsData } = data;
+  const { analysisData } = data;
 
-  const topProductsByValue = last4MonthsData?.productsSummary
+  const topProductsByValue = analysisData?.productsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
     .slice(0, 5) ?? [];
 
-  const topProductsByPercentage = last4MonthsData?.productsSummary
+  const topProductsByPercentage = analysisData?.productsSummary
     .sort((a, b) => b.marginLossPercentage - a.marginLossPercentage)
     .slice(0, 5) ?? [];
     
-  const topVendors = last4MonthsData?.vendorsSummary
+  const topVendors = analysisData?.vendorsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
     .slice(0, 5) ?? [];
 
@@ -257,25 +271,25 @@ export default function Home() {
         <div className="mt-6">
             <div className="flex items-center gap-4 mb-4">
                 <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Analysis for Current Month & Last 3 Months</h2>
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getAnalysisPeriodTitle()}</h2>
                 <Separator />
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <KpiCard
                 title="Total Margin Loss"
-                value={formatCurrency(last4MonthsData.totalMarginLoss)}
+                value={formatCurrency(analysisData.totalMarginLoss)}
                 description="Cumulative loss across all products"
                 icon={DollarSign}
               />
               <KpiCard
                 title="Total SKU's"
-                value={last4MonthsData.products.length.toString()}
+                value={analysisData.products.length.toString()}
                 description="Total unique products with purchases"
                 icon={Package}
               />
                <KpiCard
                 title="Total Vendors"
-                value={last4MonthsData.vendors.length.toString()}
+                value={analysisData.vendors.length.toString()}
                 description="Total unique vendors in the system"
                 icon={Truck}
               />
@@ -288,7 +302,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (Value)</CardTitle>
                 <CardDescription>
-                  Products with the highest margin loss for Current Month & Last 3 Months.
+                  Products with the highest margin loss for the selected period.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -299,7 +313,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (%)</CardTitle>
                 <CardDescription>
-                  Products with the highest margin loss percentage for Current Month & Last 3 Months.
+                  Products with the highest margin loss percentage for the selected period.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -310,7 +324,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Top 5 Vendors by Margin Loss</CardTitle>
                 <CardDescription>
-                  Vendors associated with the highest total margin loss for Current Month & Last 3 Months.
+                  Vendors associated with the highest total margin loss for the selected period.
                 </CardDescription>
               </CardHeader>
               <CardContent>

@@ -1,5 +1,5 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData } from "@/lib/types";
-import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth } from 'date-fns';
+import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth, parse } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
 function getMode(arr: number[]): number | undefined {
@@ -174,33 +174,33 @@ export function getFinancialYearMonths(startYear = 2025) {
 
 export async function getAppData(
     geoFilters: { state?: string; city?: string, cityState?: string } = {},
-    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string, startDate?: Date, endDate?: Date } = {} // period is 'YYYY-MM'
+    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string } = {}
 ): Promise<AppData> {
-  let allPurchases = fullDataset.purchases;
-
+  const allPurchases = fullDataset.purchases;
+  
   const now = new Date();
-  let timeFilteredPurchases = allPurchases;
-  
-  if (options.period || (options.startDate && options.endDate)) {
-    let startDate: Date;
-    let endDate: Date = options.endDate || startOfToday();
+  let endDate: Date;
+  let startDate: Date;
 
-    if (options.startDate) {
-        startDate = options.startDate;
-    } else if (options.period === 'mtd') {
-        startDate = startOfMonth(now);
-    } else { // Specific month 'YYYY-MM'
-        const [year, month] = (options.period as string).split('-').map(Number);
-        startDate = new Date(year, month - 1, 1);
-        endDate = endOfMonth(startDate);
-    }
-    
-    timeFilteredPurchases = allPurchases.filter(p => {
-        const purchaseDate = parseISO(p.date);
-        return purchaseDate >= startDate && purchaseDate <= endDate;
-    });
+  if (options.period === 'mtd') {
+      endDate = startOfToday();
+      startDate = startOfMonth(subMonths(now, 3)); 
+  } else if (options.period) {
+      const [year, month] = options.period.split('-').map(Number);
+      const selectedMonthDate = new Date(year, month - 1, 1);
+      endDate = endOfMonth(selectedMonthDate);
+      startDate = startOfMonth(subMonths(selectedMonthDate, 3));
+  } else {
+     // Default case if no period is provided, though the app logic should always provide one.
+     endDate = startOfToday();
+     startDate = startOfMonth(subMonths(now, 3));
   }
-  
+
+  const timeFilteredPurchases = allPurchases.filter(p => {
+      const purchaseDate = parseISO(p.date);
+      return purchaseDate >= startDate && purchaseDate <= endDate;
+  });
+
   let filteredPurchases = timeFilteredPurchases;
 
   if (geoFilters.city && geoFilters.state) {
@@ -236,7 +236,6 @@ export async function getAppData(
       const multiplier = options.customMultipliers?.[product.id] ?? 4.0;
       const outlierThreshold = multiplier * modeMargin;
       
-      // The benchmark (bestMargin) must be calculated on non-outliers from the *same filtered set*
       const nonOutlierPurchases = filteredPurchases
         .map(p => allPurchasesWithMargin.find(pwm => pwm.id === p.id)!)
         .filter(p => p.productId === product.id && p.margin < outlierThreshold);
@@ -248,10 +247,15 @@ export async function getAppData(
         const bestPurchase = nonOutlierPurchases.find(p => p.margin === bestMargin)!;
         bestPrice = bestPurchase.purchasePrice;
       } else {
-        // Fallback if all purchases for the period are outliers
-        // We still need a benchmark, so let's use the mode margin itself, which is not ideal but better than 0.
-        bestMargin = modeMargin;
-        bestPrice = product.sellingPrice * (1 - (modeMargin / 100));
+        const nonOutlierGlobal = productPurchases.filter(p => p.margin < outlierThreshold);
+        if (nonOutlierGlobal.length > 0) {
+           bestMargin = Math.max(...nonOutlierGlobal.map(p => p.margin));
+           const bestPurchase = nonOutlierGlobal.find(p => p.margin === bestMargin)!;
+           bestPrice = bestPurchase.purchasePrice;
+        } else {
+            bestMargin = modeMargin;
+            bestPrice = product.sellingPrice * (1 - (modeMargin / 100));
+        }
       }
       productBenchmarks.set(product.id, { mode: modeMargin, bestMargin, bestPrice });
   }
@@ -294,7 +298,6 @@ export async function getAppData(
     const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     const totalPurchaseValue = nonOutlierPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
     
-    // The benchmark is global, but the actual best margin for the period should be from the period's data.
     const bestMarginForPeriod = Math.max(...nonOutlierPurchases.map(p => p.margin));
     const bestMarginPurchase = nonOutlierPurchases.find(p => p.margin === bestMarginForPeriod)!;
     const worstMarginPurchase = nonOutlierPurchases.sort((a,b) => a.margin - b.margin)[0];
@@ -338,8 +341,9 @@ export async function getAppData(
 
     const globalBenchmark = productBenchmarks.get(product.id);
     if (!globalBenchmark) return null;
-    // We want to show the global best margin in the analysis drill down, for comparison.
-    const enhancedBaseSummary = { ...baseSummary, bestMargin: globalBenchmark.bestMargin };
+    
+    // Use the best margin calculated for the specific filtered period
+    const enhancedBaseSummary = { ...baseSummary, bestMargin: baseSummary.bestMargin };
 
     return { ...enhancedBaseSummary, purchaseCount: nonOutlierPurchases.length, marginLossPercentage, vendorCount: vendorIds.size };
   }).filter((p): p is MarginAnalysisProductSummary => p !== null);
@@ -366,31 +370,16 @@ export async function getProductDetails(
     const product = fullDataset.products.find(p => p.id === productId);
     if (!product) return null;
 
+    const dataForPeriod = await getAppData({ ...filters }, { customMultipliers, period });
+    const purchasesForPeriod = dataForPeriod.processedPurchases.filter(p => p.productId === productId);
+    const summaryForPeriod = dataForPeriod.productsSummary.find(p => p.id === productId);
+
     const now = new Date();
-    let historyEndDate: Date;
-    let historyStartDate: Date;
-
-    if (period === 'mtd') {
-        historyEndDate = startOfToday();
-        historyStartDate = startOfMonth(subMonths(now, 3)); 
-    } else { // Specific month 'YYYY-MM'
-        const [year, month] = period.split('-').map(Number);
-        const selectedMonthDate = new Date(year, month - 1, 1);
-        historyEndDate = endOfMonth(selectedMonthDate);
-        historyStartDate = startOfMonth(subMonths(selectedMonthDate, 3));
-    }
-    
-    // Fetch data for the combined period (selected month + 3 previous months)
-    const combinedData = await getAppData({ ...filters }, { customMultipliers, startDate: historyStartDate, endDate: historyEndDate });
-    const purchasesForPeriod = combinedData.processedPurchases.filter(p => p.productId === productId);
-    const summaryForPeriod = combinedData.productsSummary.find(p => p.id === productId);
-
-    // Calculate YTD Monthly Averages for charts
     const financialYearStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
     
-    const allProductPurchasesYTD = (await getAppData({...filters, }, { customMultipliers, startDate: financialYearStart, endDate: now }))
+    const allProductPurchasesYTD = (await getAppData({...filters, }, { customMultipliers, period: 'mtd' })) // Use MTD to get up to current date for YTD
       .processedPurchases
-      .filter(p => p.productId === productId && !p.isOutlier);
+      .filter(p => p.productId === productId && !p.isOutlier && parseISO(p.date) >= financialYearStart);
       
     const monthlyAverages: MonthlyAverage[] = [];
     for(let i = 0; i < 12; i++){
@@ -416,10 +405,7 @@ export async function getProductDetails(
 
     let panIndiaSummary: ProductSummary | undefined = undefined;
     if (getPanIndiaData) {
-         const panIndiaHistoryEndDate = period === 'mtd' ? startOfToday() : endOfMonth(parseISO(`${period}-01`));
-         const panIndiaHistoryStartDate = startOfMonth(subMonths(panIndiaHistoryEndDate, 3));
-        
-        const panIndiaData = await getAppData({}, { customMultipliers, startDate: panIndiaHistoryStartDate, endDate: panIndiaHistoryEndDate });
+        const panIndiaData = await getAppData({}, { customMultipliers, period });
         panIndiaSummary = panIndiaData.productsSummary.find(p => p.id === productId);
     }
     
@@ -433,11 +419,11 @@ export async function getProductDetails(
 }
 
 export async function getVendorDetails(vendorId: string) {
-    const data = await getAppData();
+    const data = await getAppData({}, { period: 'mtd' }); // Default to MTD for vendor details
     const vendor = data.vendors.find(v => v.id === vendorId);
     if (!vendor) return null;
     
-    const allPurchases = (await getAppData()).processedPurchases;
+    const allPurchases = data.processedPurchases;
     const vendorPurchases = allPurchases.filter(p => p.vendorId === vendorId);
     const summary = data.vendorsSummary.find(v => v.id === vendorId);
 
@@ -467,17 +453,9 @@ export async function getHomePageData(
     period: 'mtd' | string
 ): Promise<HomePageData> {
     
-    const now = new Date();
-    
-    // Data for selected period for the charts
-    const periodData = await getAppData(geoFilters, { period });
-
-    // Data for last 4 months for the KPIs
-    const last4MonthsStartDate = startOfMonth(subMonths(now, 3));
-    const last4MonthsData = await getAppData(geoFilters, { startDate: last4MonthsStartDate, endDate: now });
+    const analysisData = await getAppData(geoFilters, { period });
 
     return {
-        periodData,
-        last4MonthsData,
+        analysisData,
     };
 }

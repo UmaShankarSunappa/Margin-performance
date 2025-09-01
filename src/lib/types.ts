@@ -77,8 +77,7 @@ export interface AppData {
 }
 
 export interface HomePageData {
-    periodData: AppData;
-    last4MonthsData: AppData;
+    analysisData: AppData;
 }
 
 export interface MonthlyAverage {
