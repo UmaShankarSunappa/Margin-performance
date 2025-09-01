@@ -150,7 +150,8 @@ function MarginAnalysisContent() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Product</TableHead>
+                                        <TableHead>Product ID</TableHead>
+                                        <TableHead>Product Name</TableHead>
                                         <TableHead className="text-right">Total Margin Loss</TableHead>
                                         <TableHead className="text-right">Total Purchases</TableHead>
                                         <TableHead className="text-right">Total Vendors</TableHead>
@@ -163,6 +164,7 @@ function MarginAnalysisContent() {
                                             onClick={() => handleRowClick(product.id)}
                                             className="cursor-pointer"
                                         >
+                                            <TableCell>{product.id}</TableCell>
                                             <TableCell className="font-semibold">{product.name}</TableCell>
                                             <TableCell className={cn("text-right font-semibold", product.totalMarginLoss > 0 && "text-destructive")}>
                                                 {formatCurrency(product.totalMarginLoss)}
