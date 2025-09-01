@@ -1,11 +1,15 @@
 'use client';
 import { notFound, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, ShoppingBag, Truck, Edit, Lock, Trash2, Eye } from "lucide-react";
+import { ArrowLeft, DollarSign, Percent, ShoppingCart, TrendingDown, TrendingUp, ShoppingBag, Truck, Edit, Lock, Trash2, Eye, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import { format } from 'date-fns';
+
 
 import Header from "@/components/Header";
 import { getProductDetails } from "@/lib/data";
@@ -64,6 +68,46 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const handleMultiplierSave = (newMultiplier: number) => {
     setCustomMultipliers(prev => ({ ...prev, [params.id]: newMultiplier }));
     setIsModalOpen(false);
+  };
+
+  const handleDownloadHistory = () => {
+    if (!details) return;
+
+    const dataToExport = details.purchases.map(p => ({
+        'Purchase ID': p.id,
+        'Vendor Name': p.vendor.name,
+        'Vendor ID': p.vendorId,
+        'Date': format(new Date(p.date), 'dd MMM yyyy'),
+        'Quantity': p.quantity,
+        'Cost Price': p.purchasePrice,
+        'Margin %': p.margin,
+        'Margin Loss': p.isOutlier ? 'N/A' : p.marginLoss,
+        'Is Outlier?': p.isOutlier ? 'Yes' : 'No',
+        'Is Best Margin?': p.isBestMargin ? 'Yes' : 'No',
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Purchase History');
+    
+    // Set column widths
+    worksheet['!cols'] = [
+        { wch: 15 }, // Purchase ID
+        { wch: 25 }, // Vendor Name
+        { wch: 15 }, // Vendor ID
+        { wch: 15 }, // Date
+        { wch: 10 }, // Quantity
+        { wch: 15 }, // Cost Price
+        { wch: 15 }, // Margin %
+        { wch: 15 }, // Margin Loss
+        { wch: 12 }, // Is Outlier?
+        { wch: 15 }, // Is Best Margin?
+    ];
+    
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    const filename = `${details.product.name.replace(/ /g, '_')}_purchase_history.xlsx`;
+    saveAs(data, filename);
   };
 
   const getBackLink = () => {
@@ -223,6 +267,10 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                     <Button variant="outline" onClick={() => setIsModalOpen(true)}>
                         <Edit className="mr-2" />
                         Adjust Multiplier
+                    </Button>
+                     <Button variant="outline" onClick={handleDownloadHistory} disabled={!showHistory || purchases.length === 0}>
+                        <FileDown className="mr-2" />
+                        Download Excel
                     </Button>
                 </div>
             </CardHeader>
