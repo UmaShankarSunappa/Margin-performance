@@ -8,7 +8,7 @@ import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 import { Search, FileDown } from "lucide-react";
-import type { MarginAnalysisProductSummary, ProcessedPurchase } from '@/lib/types';
+import type { MarginAnalysisProductSummary } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -44,6 +44,7 @@ function MarginAnalysisContent() {
     }, [dateRange]);
 
     useEffect(() => {
+        setIsLoading(true);
         getAppData(filters, options).then(data => {
             setAllProductsSummary(data.marginAnalysisSummary);
             setIsLoading(false);
@@ -63,8 +64,15 @@ function MarginAnalysisContent() {
             'Product Name': p.name,
             'Total Margin Loss': p.totalMarginLoss,
             'Margin Loss %': p.marginLossPercentage,
-            'Purchases': p.purchaseCount,
-            'Vendor Count': p.vendorCount,
+            'Total Purchases': p.purchaseCount,
+            'Total Quantity': p.totalQuantityPurchased,
+            'Total Vendors': p.vendorCount,
+            'Best Margin %': p.bestMargin,
+            'Worst Margin %': p.worstMargin,
+            'Average Margin %': p.averageMargin,
+            'Mode Margin %': p.modeMargin,
+            'Best Vendor': p.bestVendor?.name || 'N/A',
+            'Worst Vendor': p.worstVendor?.name || 'N/A',
         }));
         
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -76,8 +84,15 @@ function MarginAnalysisContent() {
             { wch: 30 }, // Product Name
             { wch: 20 }, // Total Margin Loss
             { wch: 15 }, // Margin Loss %
-            { wch: 20 }, // Purchases
-            { wch: 15 }, // Vendor Count
+            { wch: 15 }, // Total Purchases
+            { wch: 15 }, // Total Quantity
+            { wch: 15 }, // Total Vendors
+            { wch: 15 }, // Best Margin
+            { wch: 15 }, // Worst Margin
+            { wch: 15 }, // Avg Margin
+            { wch: 15 }, // Mode Margin
+            { wch: 25 }, // Best Vendor
+            { wch: 25 }, // Worst Vendor
         ];
         worksheet['!cols'] = colWidths;
         
