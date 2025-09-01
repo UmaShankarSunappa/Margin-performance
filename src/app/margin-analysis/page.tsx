@@ -22,7 +22,7 @@ function MarginAnalysisContent() {
     const state = searchParams.get('state');
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
-    const dateRange = searchParams.get('range');
+    const period = searchParams.get('period');
 
     const [allProductsSummary, setAllProductsSummary] = useState<MarginAnalysisProductSummary[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -40,8 +40,8 @@ function MarginAnalysisContent() {
     }, [scope, state, city, cityState]);
     
     const options = useMemo(() => {
-        return { dateRange: dateRange as '1m' | '3m' | '6m' | '9m' | '1y' };
-    }, [dateRange]);
+        return { period: period as 'mtd' | string };
+    }, [period]);
 
     useEffect(() => {
         setIsLoading(true);
@@ -98,7 +98,7 @@ function MarginAnalysisContent() {
         
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-        const filename = dateRange ? `product_margin_analysis_${dateRange}.xlsx` : 'product_margin_analysis.xlsx';
+        const filename = period ? `product_margin_analysis_${period}.xlsx` : 'product_margin_analysis.xlsx';
         saveAs(data, filename);
     };
 
