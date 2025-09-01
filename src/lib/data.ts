@@ -51,7 +51,7 @@ function generateData() {
 
   const productCount = 150;
   const vendorCount = 66;
-  const purchasesPerProduct = 50; // Increased for better mode calculation
+  const purchasesPerProduct = 20;
 
   // Generate Products
   const pharmaNames = [
