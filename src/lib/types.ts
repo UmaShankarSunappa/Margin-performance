@@ -86,7 +86,6 @@ export interface ProductDetails {
   product: Product;
   purchases: ProcessedPurchase[];
   summary: ProductSummary | undefined;
-  summaryLast3Months?: ProductSummary;
   panIndiaSummary?: ProductSummary;
   monthlyAverages: MonthlyAverage[];
 }

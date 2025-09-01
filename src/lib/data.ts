@@ -174,7 +174,7 @@ export function getFinancialYearMonths(startYear = 2025) {
 
 export async function getAppData(
     geoFilters: { state?: string; city?: string, cityState?: string } = {},
-    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | '3m' | string, startDate?: Date, endDate?: Date } = {} // period is 'YYYY-MM'
+    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string, startDate?: Date, endDate?: Date } = {} // period is 'YYYY-MM'
 ): Promise<AppData> {
   let allPurchases = fullDataset.purchases;
 
@@ -189,8 +189,6 @@ export async function getAppData(
         startDate = options.startDate;
     } else if (options.period === 'mtd') {
         startDate = startOfMonth(now);
-    } else if (options.period === '3m') {
-        startDate = subMonths(startOfMonth(now), 2); // Start of the month, 3 months ago
     } else { // Specific month 'YYYY-MM'
         const [year, month] = (options.period as string).split('-').map(Number);
         startDate = new Date(year, month - 1, 1);
@@ -350,7 +348,7 @@ export async function getProductDetails(
     const product = fullDataset.products.find(p => p.id === productId);
     if (!product) return null;
 
-    // --- Purchase History Logic ---
+    // --- KPIs and Purchase History Logic ---
     // Show data for selected month + previous 3 months.
     const now = new Date();
     let historyEndDate: Date;
@@ -358,22 +356,19 @@ export async function getProductDetails(
 
     if (period === 'mtd') {
         historyEndDate = startOfToday();
-        historyStartDate = subMonths(startOfMonth(now), 3); // Start of month, 4 months ago total
+        historyStartDate = startOfMonth(subMonths(now, 3)); 
     } else { // Specific month 'YYYY-MM'
         const [year, month] = period.split('-').map(Number);
         const selectedMonthDate = new Date(year, month - 1, 1);
         historyEndDate = endOfMonth(selectedMonthDate);
-        historyStartDate = subMonths(startOfMonth(selectedMonthDate), 3);
+        historyStartDate = startOfMonth(subMonths(selectedMonthDate, 3));
     }
     
-    const historyData = await getAppData({ ...filters }, { customMultipliers, startDate: historyStartDate, endDate: historyEndDate });
-    const filteredPurchases = historyData.processedPurchases.filter(p => p.productId === productId);
-    const summaryForPeriod = historyData.productsSummary.find(p => p.id === productId);
+    // Fetch data for the combined period (selected month + 3 previous months)
+    const combinedData = await getAppData({ ...filters }, { customMultipliers, startDate: historyStartDate, endDate: historyEndDate });
+    const purchasesForPeriod = combinedData.processedPurchases.filter(p => p.productId === productId);
+    const summaryForPeriod = combinedData.productsSummary.find(p => p.id === productId);
 
-    // Get data for the last 3 months for comparison KPI
-    const last3MonthsData = await getAppData({ ...filters }, { customMultipliers, period: '3m' });
-    const summaryLast3Months = last3MonthsData.productsSummary.find(p => p.id === productId);
-    
     // Calculate YTD Monthly Averages for charts
     const financialYearStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
     
@@ -411,9 +406,8 @@ export async function getProductDetails(
     
     return { 
         product, 
-        purchases: filteredPurchases, 
+        purchases: purchasesForPeriod, 
         summary: summaryForPeriod, 
-        summaryLast3Months,
         panIndiaSummary,
         monthlyAverages
     };

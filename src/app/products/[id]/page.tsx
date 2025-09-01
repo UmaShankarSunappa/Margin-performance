@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { format, parse } from 'date-fns';
+import { format, parse, subMonths, startOfMonth } from 'date-fns';
 
 
 import Header from "@/components/Header";
@@ -140,20 +140,35 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     notFound();
   }
 
-  const { product, purchases, summary, panIndiaSummary, summaryLast3Months, monthlyAverages } = details;
+  const { product, purchases, summary, panIndiaSummary, monthlyAverages } = details;
   
   const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
 
   const getFormattedPeriod = () => {
       if (!period) return '';
-      if (period === 'mtd') return ' (Current Month till Date)';
+      if (period === 'mtd') return ` (Current Month & Last 3 Months)`;
       try {
           const date = parse(period, 'yyyy-MM', new Date());
-          return ` (for ${format(date, 'MMMM yyyy')})`;
+          const startDate = startOfMonth(subMonths(date, 3));
+          return ` (for ${format(startDate, 'MMM yyyy')} - ${format(date, 'MMM yyyy')})`;
       } catch (e) {
           return '';
       }
   };
+  
+  const getKpiTitle = () => {
+    let title = 'Analysis';
+     if (period === 'mtd') {
+        title = `Analysis (Current Month & Last 3 Months)`;
+     } else {
+         try {
+            const date = parse(period, 'yyyy-MM', new Date());
+            const startDate = startOfMonth(subMonths(date, 3));
+            title = `Analysis for ${format(startDate, 'MMM yyyy')} - ${format(date, 'MMM yyyy')}`;
+         } catch(e) {}
+     }
+    return title;
+  }
 
   const getPageTitle = () => {
     let baseTitle = `Analysis for ${product.name}`;
@@ -201,24 +216,24 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         </div>
         
         {/* KPI Section */}
-        {summaryLast3Months && (
+        {summary && (
           <div>
              <div className="flex items-center gap-4 mb-4">
                 <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Last 3 Months Analysis</h2>
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle()}</h2>
                 <Separator />
             </div>
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <KpiCard title="Total Purchases" value={formatNumber(summaryLast3Months.purchaseCount)} description="Last 3M valid purchases" icon={ShoppingCart} />
-                <KpiCard title="Total Quantity" value={formatNumber(summaryLast3Months.totalQuantityPurchased)} description="Last 3M cumulative units" icon={ShoppingBag} />
-                <KpiCard title="Best Margin %" value={`${formatNumber(summaryLast3Months.bestMargin)}%`} description="Last 3M highest margin" icon={TrendingUp} />
-                <KpiCard title="Worst Margin %" value={`${formatNumber(summaryLast3Months.worstMargin)}%`} description="Last 3M lowest margin" icon={TrendingDown} />
-                <KpiCard title="Average Margin %" value={`${formatNumber(summaryLast3Months.averageMargin)}%`} description="Last 3M average margin" icon={Percent} />
-                <KpiCard title="Total Margin Loss" value={formatCurrency(summaryLast3Months.totalMarginLoss)} description="Last 3M cumulative margin loss" icon={DollarSign} />
-                <KpiCard title="Mode Margin %" value={`${formatNumber(summaryLast3Months.modeMargin)}%`} description="Last 3M most frequent margin" icon={Percent} />
-                 <KpiCard title="Best Vendor" value={summaryLast3Months?.bestVendor?.name || 'N/A'} description="Last 3M vendor with highest margin" icon={Truck} />
-                <KpiCard title="Worst Vendor" value={summaryLast3Months?.worstVendor?.name || 'N/A'} description="Last 3M vendor with lowest margin" icon={Truck} />
-                <KpiCard title="Margin Loss %" value={`${formatNumber(summaryLast3Months.marginLossPercentage || 0)}%`} description="Last 3M margin loss / total cost" icon={Percent} />
+                <KpiCard title="Total Purchases" value={formatNumber(summary.purchaseCount)} description="Valid purchases in period" icon={ShoppingCart} />
+                <KpiCard title="Total Quantity" value={formatNumber(summary.totalQuantityPurchased)} description="Cumulative units in period" icon={ShoppingBag} />
+                <KpiCard title="Best Margin %" value={`${formatNumber(summary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
+                <KpiCard title="Worst Margin %" value={`${formatNumber(summary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
+                <KpiCard title="Average Margin %" value={`${formatNumber(summary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
+                <KpiCard title="Total Margin Loss" value={formatCurrency(summary.totalMarginLoss)} description="Cumulative margin loss in period" icon={DollarSign} />
+                <KpiCard title="Mode Margin %" value={`${formatNumber(summary.modeMargin)}%`} description="Most frequent margin in period" icon={Percent} />
+                 <KpiCard title="Best Vendor" value={summary?.bestVendor?.name || 'N/A'} description="Vendor with highest margin in period" icon={Truck} />
+                <KpiCard title="Worst Vendor" value={summary?.worstVendor?.name || 'N/A'} description="Vendor with lowest margin in period" icon={Truck} />
+                <KpiCard title="Margin Loss %" value={`${formatNumber(summary.marginLossPercentage || 0)}%`} description="Margin loss / total cost in period" icon={Percent} />
              </div>
           </div>
         )}
