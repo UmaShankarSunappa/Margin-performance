@@ -6,16 +6,14 @@ import { saveAs } from 'file-saver';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { Search, FileDown } from "lucide-react";
 import type { MarginAnalysisProductSummary, ProcessedPurchase } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from '@/lib/utils';
 
-type Period = 'fy' | '3m';
 
 function MarginAnalysisContent() {
     const router = useRouter();
@@ -24,11 +22,10 @@ function MarginAnalysisContent() {
     const state = searchParams.get('state');
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
+    const dateRange = searchParams.get('range');
 
-    const [allPurchases, setAllPurchases] = useState<ProcessedPurchase[]>([]);
     const [allProductsSummary, setAllProductsSummary] = useState<MarginAnalysisProductSummary[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [period, setPeriod] = useState<Period>('fy');
     const [isLoading, setIsLoading] = useState(true);
 
     const filters = useMemo(() => {
@@ -41,74 +38,24 @@ function MarginAnalysisContent() {
         }
         return f;
     }, [scope, state, city, cityState]);
+    
+    const options = useMemo(() => {
+        return { dateRange: dateRange as '1m' | '3m' | '6m' | '9m' | '1y' };
+    }, [dateRange]);
 
     useEffect(() => {
-        getAppData(filters).then(data => {
-            setAllPurchases(data.processedPurchases);
+        getAppData(filters, options).then(data => {
             setAllProductsSummary(data.marginAnalysisSummary);
             setIsLoading(false);
         });
-    }, [filters]);
+    }, [filters, options]);
     
     const filteredSummary = useMemo(() => {
-      if (isLoading) return [];
-      
-      const now = new Date();
-      let periodStartDate: Date;
-      let periodEndDate: Date | null = null;
-      
-      if (period === '3m') {
-          periodStartDate = subMonths(now, 3);
-      } else { // 'fy'
-          const currentMonth = now.getMonth(); // 0-11 (Jan-Dec)
-          const currentYear = now.getFullYear();
-          if (currentMonth >= 3) { // April (month 3) onwards
-              periodStartDate = new Date(currentYear, 3, 1); // April 1 of current year
-              periodEndDate = new Date(currentYear + 1, 2, 31); // March 31 of next year
-          } else { // Jan, Feb, March (months 0, 1, 2)
-              periodStartDate = new Date(currentYear - 1, 3, 1); // April 1 of previous year
-              periodEndDate = new Date(currentYear, 2, 31); // March 31 of current year
-          }
-      }
-
-      return allProductsSummary
-        .map(productSummary => {
-            const purchasesInPeriod = allPurchases.filter(p => {
-                if (p.productId !== productSummary.id) return false;
-                
-                const purchaseDate = parseISO(p.date);
-                if (periodEndDate) { // Financial year
-                    return isWithinInterval(purchaseDate, { start: periodStartDate, end: periodEndDate });
-                } else { // Last 3 months
-                    return purchaseDate >= periodStartDate;
-                }
-            });
-            
-            if(purchasesInPeriod.length === 0) return null;
-
-            const nonOutlierPurchases = purchasesInPeriod.filter(p => !p.isOutlier);
-            if (nonOutlierPurchases.length === 0) return null;
-
-            const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
-            const totalPurchaseCost = nonOutlierPurchases.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
-            const marginLossPercentage = totalPurchaseCost > 0 ? (totalMarginLoss / totalPurchaseCost) * 100 : 0;
-            const vendorIds = new Set(nonOutlierPurchases.map(p => p.vendorId));
-
-            return {
-                ...productSummary,
-                totalMarginLoss,
-                marginLossPercentage,
-                purchaseCount: nonOutlierPurchases.length,
-                vendorCount: vendorIds.size
-            };
-        })
-        .filter((p): p is MarginAnalysisProductSummary => p !== null)
-        .filter(product => 
-          product.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        .sort((a,b) => b.totalMarginLoss - a.totalMarginLoss);
-
-    }, [allProductsSummary, allPurchases, period, searchQuery, isLoading]);
+        if (isLoading) return [];
+        return allProductsSummary.filter(product => 
+            product.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ).sort((a,b) => b.totalMarginLoss - a.totalMarginLoss);
+    }, [allProductsSummary, searchQuery, isLoading]);
 
     const handleDownload = () => {
         const dataToExport = filteredSummary.map(p => ({
@@ -136,12 +83,12 @@ function MarginAnalysisContent() {
         
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-        saveAs(data, `product_margin_analysis_${period}.xlsx`);
+        const filename = dateRange ? `product_margin_analysis_${dateRange}.xlsx` : 'product_margin_analysis.xlsx';
+        saveAs(data, filename);
     };
 
     const handleRowClick = (productId: string) => {
         const params = new URLSearchParams(searchParams);
-        // We are already on margin-analysis, so the scope params are present if a filter is active
         router.push(`/products/${productId}?${params.toString()}`);
     }
     
@@ -172,10 +119,6 @@ function MarginAnalysisContent() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant={period === 'fy' ? 'default' : 'outline'} onClick={() => setPeriod('fy')}>Financial Year</Button>
-                    <Button variant={period === '3m' ? 'default' : 'outline'} onClick={() => setPeriod('3m')}>3 Months</Button>
                 </div>
             </div>
 
