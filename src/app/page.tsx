@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -12,7 +12,7 @@ import {
 import { DollarSign, Package, Truck, MapPin, Calendar, BarChartHorizontal } from "lucide-react";
 
 import Header from "@/components/Header";
-import { getAppData } from "@/lib/data";
+import { getAppData, getFinancialYearMonths } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 import KpiCard from "@/components/dashboard/KPI";
 import ProductMarginLossChart from "@/components/charts/ProductMarginLossChart";
@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 
 
 type Scope = 'pan-india' | 'state' | 'city';
-type DateRange = '1m' | '3m' | '6m' | '9m' | '1y';
+type Period = 'mtd' | string; // 'mtd' or 'YYYY-MM'
 
 export default function Home() {
   const router = useRouter();
@@ -36,13 +36,14 @@ export default function Home() {
   const [data, setData] = useState<AppData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize state from URL or set defaults
+  // State initialization from URL or defaults
   const [scope, setScope] = useState<Scope>(() => (searchParams.get('scope') as Scope) || 'pan-india');
   const [selectedState, setSelectedState] = useState<string>(() => searchParams.get('state') || 'Telangana');
   const [selectedCityState, setSelectedCityState] = useState<string>(() => searchParams.get('cityState') || 'Telangana');
   const [selectedCity, setSelectedCity] = useState<string>(() => searchParams.get('city') || 'Hyderabad');
-  const [dateRange, setDateRange] = useState<DateRange>(() => (searchParams.get('range') as DateRange) || '1y');
-
+  const [period, setPeriod] = useState<Period>(() => searchParams.get('period') || 'mtd');
+  
+  const financialYearMonths = useMemo(() => getFinancialYearMonths(), []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,7 +52,7 @@ export default function Home() {
       
       let filter: { state?: string, city?: string, cityState?: string } = {};
       const currentScope = params.get('scope') as Scope || 'pan-india';
-      const currentRange = params.get('range') as DateRange || '1y';
+      const currentPeriod = params.get('period') as Period || 'mtd';
 
       if (currentScope === 'state') {
         const state = params.get('state');
@@ -62,7 +63,7 @@ export default function Home() {
         if (city && cityState) filter = { city, state: cityState };
       }
       
-      const appData = await getAppData(filter, {dateRange: currentRange});
+      const appData = await getAppData(filter, { period: currentPeriod });
 
       setData(appData);
       setIsLoading(false);
@@ -92,14 +93,13 @@ export default function Home() {
        newParams.cityState = selectedCityState;
        newParams.city = selectedCity;
     }
-    // keep dateRange
-    newParams.range = dateRange;
+    newParams.period = period;
     updateUrlParams(newParams);
   };
   
   const handleStateChange = (state: string) => {
       setSelectedState(state);
-      updateUrlParams({ scope: 'state', state: state, city: null, cityState: null, range: dateRange });
+      updateUrlParams({ scope: 'state', state: state, city: null, cityState: null, period: period });
   }
 
   const handleCityStateChange = (state: string) => {
@@ -107,18 +107,18 @@ export default function Home() {
     const citiesForNewState = geoLocations.citiesByState[state] || [];
     const newCity = citiesForNewState.length > 0 ? citiesForNewState[0] : '';
     setSelectedCity(newCity);
-    updateUrlParams({ scope: 'city', cityState: state, city: newCity, state: null, range: dateRange });
+    updateUrlParams({ scope: 'city', cityState: state, city: newCity, state: null, period: period });
   };
 
   const handleCityChange = (city: string) => {
       setSelectedCity(city);
-      updateUrlParams({ scope: 'city', cityState: selectedCityState, city, state: null, range: dateRange });
+      updateUrlParams({ scope: 'city', cityState: selectedCityState, city, state: null, period: period });
   }
   
-  const handleDateRangeChange = (value: DateRange) => {
-    setDateRange(value);
+  const handlePeriodChange = (value: Period) => {
+    setPeriod(value);
     const currentParams = new URLSearchParams(searchParams);
-    currentParams.set('range', value);
+    currentParams.set('period', value);
     router.push(`${pathname}?${currentParams.toString()}`);
   }
 
@@ -176,17 +176,16 @@ export default function Home() {
                     <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                    <Select onValueChange={(value: DateRange) => handleDateRangeChange(value)} value={dateRange}>
-                        <SelectTrigger className="w-full sm:w-[150px]">
+                    <Select onValueChange={(value: Period) => handlePeriodChange(value)} value={period}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
                             <Calendar className="mr-2" />
-                            <SelectValue placeholder="Select Date Range" />
+                            <SelectValue placeholder="Select Period" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="1m">Last 1 Month</SelectItem>
-                            <SelectItem value="3m">Last 3 Months</SelectItem>
-                            <SelectItem value="6m">Last 6 Months</SelectItem>
-                            <SelectItem value="9m">Last 9 Months</SelectItem>
-                            <SelectItem value="1y">Last 1 Year</SelectItem>
+                            <SelectItem value="mtd">Current Month till Date</SelectItem>
+                            {financialYearMonths.map(month => (
+                                <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
 

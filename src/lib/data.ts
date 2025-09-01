@@ -1,5 +1,5 @@
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary } from "@/lib/types";
-import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear } from 'date-fns';
+import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
 function getMode(arr: number[]): number | undefined {
@@ -79,7 +79,6 @@ function generateData() {
   for (let i = 1; i <= productCount; i++) {
     const nameIndex = (i - 1) % pharmaNames.length;
     let productName = pharmaNames[nameIndex];
-    // If we've looped through all unique names, add a number to differentiate
     if (i > pharmaNames.length) {
         productName = `${productName} #${Math.floor(i / pharmaNames.length) + 1}`;
     }
@@ -87,12 +86,10 @@ function generateData() {
     products.push({
       id: `sku-${i}`,
       name: productName,
-      sellingPrice: Math.random() * 300 + 20, // 20 to 320
+      sellingPrice: Math.random() * 300 + 20,
     });
   }
 
-
-  // Generate Vendors
   const vendorNames = ["Om sai enterprise", "Vishal agensises", "Khan C&F", "N sons agensises", "Bharat distributors"];
   for (let i = 1; i <= vendorCount; i++) {
     vendors.push({
@@ -101,35 +98,32 @@ function generateData() {
     });
   }
 
-  // Generate Purchases
   let purchaseIdCounter = 1;
+  const today = new Date();
   
   products.forEach(product => {
-    const commonMarginPercentage = (Math.random() * 15 + 10) / 100; // 10-25%
+    const commonMarginPercentage = (Math.random() * 15 + 10) / 100;
     const commonPurchasePrice = product.sellingPrice * (1 - commonMarginPercentage);
-
-    // Force an outlier for the first few products
-    const isOutlierSku = parseInt(product.id.split('-')[1]) <= 3; // Force for SKU-1, SKU-2, SKU-3
+    const isOutlierSku = parseInt(product.id.split('-')[1]) <= 3;
     
     for (let i = 0; i < purchasesPerProduct; i++) {
         const vendor = vendors[Math.floor(Math.random() * vendors.length)];
-        const date = new Date(Date.now() - Math.random() * 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        // Generate dates within the last 2 years for broad data
+        const date = sub(today, { days: Math.floor(Math.random() * 730) }).toISOString().split('T')[0];
         const quantity = Math.floor(Math.random() * 150) + 10;
         let purchasePrice;
         
-        // This makes the LAST purchase for outlier SKUs a guaranteed, large outlier
         if (isOutlierSku && i === purchasesPerProduct - 1) {
-            // This margin (e.g., 80%) will be very high compared to the common margin (10-25%)
             const outlierMargin = 0.80; 
             purchasePrice = product.sellingPrice * (1 - outlierMargin);
         } else {
             const randomFactor = Math.random();
-            if (randomFactor < 0.6) { // 60% chance of being the common price
+            if (randomFactor < 0.6) {
                 purchasePrice = commonPurchasePrice;
-            } else if (randomFactor < 0.9) { // 30% chance of slight variation
-                purchasePrice = commonPurchasePrice * (1 + (Math.random() - 0.5) * 0.1); // +/- 5%
-            } else { // 10% chance of being a different, but not necessarily outlier price
-                purchasePrice = commonPurchasePrice * (1 - Math.random() * 0.15); // Price can be lower -> margin higher but likely not outlier
+            } else if (randomFactor < 0.9) {
+                purchasePrice = commonPurchasePrice * (1 + (Math.random() - 0.5) * 0.1);
+            } else {
+                purchasePrice = commonPurchasePrice * (1 - Math.random() * 0.15);
             }
         }
         
@@ -148,7 +142,7 @@ function generateData() {
             city
         });
     }
-});
+  });
 
   return { products, vendors, purchases };
 }
@@ -156,61 +150,60 @@ function generateData() {
 // Store the full dataset in memory
 const fullDataset = generateData();
 
+export function getFinancialYearMonths(startYear = 2025) {
+    const months = [];
+    const today = new Date();
+    const currentMonth = today.getMonth(); // 0-11
+    const currentYear = today.getFullYear();
+
+    // Financial year starts in April (month 3)
+    let financialYearStart = new Date(startYear, 3, 1);
+
+    // Loop from the start of the financial year to the current month
+    while (financialYearStart <= today) {
+        months.push({
+            label: formatDate(financialYearStart, 'MMM yyyy'),
+            value: formatDate(financialYearStart, 'yyyy-MM'),
+        });
+        financialYearStart.setMonth(financialYearStart.getMonth() + 1);
+    }
+
+    return months.reverse(); // Show most recent first
+}
+
 
 export async function getAppData(
     geoFilters: { state?: string; city?: string, cityState?: string } = {},
-    options: { customMultipliers?: Record<string, number>, dateRange?: '1m' | '3m' | '6m' | '9m' | '1y', period?: 'fy' | '3m' } = {}
+    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string } = {} // period is 'YYYY-MM'
 ): Promise<AppData> {
   let allPurchases = fullDataset.purchases;
 
-  // Time-based filtering
   const now = new Date();
   let timeFilteredPurchases = allPurchases;
-
-  if (options.dateRange) {
-    let startDate: Date;
-    switch(options.dateRange) {
-        case '1m': startDate = subMonths(now, 1); break;
-        case '3m': startDate = subMonths(now, 3); break;
-        case '6m': startDate = subMonths(now, 6); break;
-        case '9m': startDate = subMonths(now, 9); break;
-        case '1y': startDate = subYears(now, 1); break;
-        default: startDate = subYears(now, 10); // Default to a long time ago if not specified
-    }
-    timeFilteredPurchases = allPurchases.filter(p => isAfter(parseISO(p.date), startDate));
-  }
   
   if (options.period) {
-    let periodStartDate: Date;
-    let periodEndDate: Date | null = null;
-    
-    if (options.period === '3m') {
-        periodStartDate = subMonths(now, 3);
-    } else { // 'fy'
-        const currentMonth = now.getMonth(); // 0-11 (Jan-Dec)
-        const currentYear = now.getFullYear();
-        if (currentMonth >= 3) { // April (month 3) onwards
-            periodStartDate = new Date(currentYear, 3, 1); // April 1 of current year
-        } else { // Jan, Feb, March (months 0, 1, 2)
-            periodStartDate = new Date(currentYear - 1, 3, 1); // April 1 of previous year
-        }
-        periodEndDate = sub(periodStartDate, { years: -1, days: -1 }); // End of March next year
-    }
+    let startDate: Date;
+    let endDate: Date = startOfToday();
 
+    if (options.period === 'mtd') {
+        startDate = startOfMonth(now);
+    } else if (options.period === '3m') {
+        startDate = subMonths(startOfMonth(now), 2); // Start of the month, 3 months ago
+    }
+    else { // Specific month 'YYYY-MM'
+        const [year, month] = options.period.split('-').map(Number);
+        startDate = new Date(year, month - 1, 1);
+        endDate = endOfMonth(startDate);
+    }
+    
     timeFilteredPurchases = allPurchases.filter(p => {
         const purchaseDate = parseISO(p.date);
-        if (periodEndDate) { // Financial year
-            return isWithinInterval(purchaseDate, { start: periodStartDate, end: periodEndDate });
-        } else { // Last 3 months
-            return purchaseDate >= periodStartDate;
-        }
+        return purchaseDate >= startDate && purchaseDate <= endDate;
     });
   }
-
   
   let filteredPurchases = timeFilteredPurchases;
 
-  // Correct filtering logic. Use cityState for city filtering.
   if (geoFilters.city && geoFilters.state) {
     filteredPurchases = timeFilteredPurchases.filter(p => p.city === geoFilters.city && p.state === geoFilters.state);
   } else if (geoFilters.state) {
@@ -226,53 +219,41 @@ export async function getAppData(
   const productMap = new Map(fullDataset.products.map(p => [p.id, p]));
   const vendorMap = new Map(fullDataset.vendors.map(v => [v.id, v]));
 
-  // Step 1: Calculate margin for ALL purchases to establish global benchmarks
   const allPurchasesWithMargin = allPurchases.map(purchase => {
     const product = productMap.get(purchase.productId)!;
     const margin = ((product.sellingPrice - purchase.purchasePrice) / product.sellingPrice) * 100;
     return { ...purchase, margin };
   });
 
-  // Step 2: For each product, calculate global mode, identify outliers, and find the best margin from non-outliers
   const productBenchmarks = new Map<string, { mode: number, bestMargin: number, bestPrice: number }>();
   for (const product of fullDataset.products) {
-      // Use ALL purchases for benchmark calculation, not just time-filtered ones
       const productPurchases = allPurchasesWithMargin.filter(p => p.productId === product.id);
-
       if (productPurchases.length === 0) continue;
 
       const margins = productPurchases.map(p => p.margin);
-      
       const modeMargin = getMode(margins.map(m => parseFloat(m.toFixed(2)))) ?? 0;
       const multiplier = options.customMultipliers?.[product.id] ?? 4.0;
-      
       const outlierThreshold = multiplier * modeMargin;
-
       const nonOutlierPurchases = productPurchases.filter(p => p.margin < outlierThreshold);
       
       let bestMargin = 0;
       let bestPrice = product.sellingPrice;
-
       if (nonOutlierPurchases.length > 0) {
         bestMargin = Math.max(...nonOutlierPurchases.map(p => p.margin));
         const bestPurchase = nonOutlierPurchases.find(p => p.margin === bestMargin)!;
         bestPrice = bestPurchase.purchasePrice;
       }
-
       productBenchmarks.set(product.id, { mode: modeMargin, bestMargin, bestPrice });
   }
 
-  // Step 3: Process filtered purchases to calculate margin loss using the global benchmarks
   const processedPurchases: ProcessedPurchase[] = filteredPurchases.map(p => {
     const product = productMap.get(p.productId)!;
     const vendor = vendorMap.get(p.vendorId)!;
     const benchmark = productBenchmarks.get(p.productId);
-
-    // This part now uses the pre-calculated margin
     const purchaseWithMargin = allPurchasesWithMargin.find(pwm => pwm.id === p.id)!;
     const margin = purchaseWithMargin.margin;
 
-    if (!benchmark) { // Should not happen if product exists
+    if (!benchmark) {
         return { ...p, margin, product, vendor, marginLoss: 0, isBestMargin: false, isOutlier: false, benchmarkMargin: margin, modeMargin: 0 };
     }
 
@@ -289,33 +270,19 @@ export async function getAppData(
       marginLoss = totalLoss > 0 ? totalLoss : 0;
     }
     
-    return {
-      ...p,
-      margin,
-      product,
-      vendor,
-      marginLoss,
-      isBestMargin: p.purchasePrice === bestPrice && !isOutlier,
-      isOutlier,
-      benchmarkMargin: bestMargin,
-      modeMargin: mode,
-    };
+    return { ...p, margin, product, vendor, marginLoss, isBestMargin: p.purchasePrice === bestPrice && !isOutlier, isOutlier, benchmarkMargin: bestMargin, modeMargin: mode };
   });
   
   const totalMarginLoss = processedPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
 
-  // Step 4: Create summaries based on the SCOPED/FILTERED data
   const productsSummary: ProductSummary[] = products.map(product => {
     const productPurchases = processedPurchases.filter(p => p.productId === product.id);
     if (productPurchases.length === 0) return null;
-    
     const nonOutlierPurchases = productPurchases.filter(p => !p.isOutlier);
-    if (nonOutlierPurchases.length === 0) return null; // Don't show products that ONLY have outlier purchases in this scope
+    if (nonOutlierPurchases.length === 0) return null;
 
     const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     const totalPurchaseValue = nonOutlierPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
-    
-    // Global benchmark is used for bestMargin
     const benchmark = productBenchmarks.get(product.id);
     const bestMarginFromBenchmark = benchmark?.bestMargin || 0;
     const modeMargin = benchmark?.mode || 0;
@@ -343,40 +310,22 @@ export async function getAppData(
   const vendorsSummary: VendorSummary[] = vendors.map(vendor => {
     const vendorPurchases = processedPurchases.filter(p => p.vendorId === vendor.id && !p.isOutlier);
     if(vendorPurchases.length === 0) return null;
-
     const totalMarginLoss = vendorPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
-    return {
-      id: vendor.id,
-      name: vendor.name,
-      totalMarginLoss,
-      productsPurchased: new Set(vendorPurchases.map(p => p.productId)).size,
-    };
+    return { id: vendor.id, name: vendor.name, totalMarginLoss, productsPurchased: new Set(vendorPurchases.map(p => p.productId)).size };
   }).filter((v): v is VendorSummary => v !== null);
 
-  // Step 5: Margin Analysis Summary
   const marginAnalysisSummary: MarginAnalysisProductSummary[] = products.map(product => {
      const productPurchases = processedPurchases.filter(p => p.productId === product.id);
     if (productPurchases.length === 0) return null;
-    
     const nonOutlierPurchases = productPurchases.filter(p => !p.isOutlier);
     const totalPurchaseCost = nonOutlierPurchases.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
     const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
-    
     const marginLossPercentage = totalPurchaseCost > 0 ? (totalMarginLoss / totalPurchaseCost) * 100 : 0;
-
     const vendorIds = new Set(nonOutlierPurchases.map(p => p.vendorId));
-    
     const baseSummary = productsSummary.find(ps => ps.id === product.id);
     if (!baseSummary) return null;
-
-    return {
-        ...baseSummary,
-        purchaseCount: nonOutlierPurchases.length, // This should reflect the filtered period
-        marginLossPercentage,
-        vendorCount: vendorIds.size,
-    };
+    return { ...baseSummary, purchaseCount: nonOutlierPurchases.length, marginLossPercentage, vendorCount: vendorIds.size };
   }).filter((p): p is MarginAnalysisProductSummary => p !== null);
-
 
   return {
     totalMarginLoss,
@@ -394,34 +343,38 @@ export async function getProductDetails(
     productId: string, 
     filters: { state?: string; city?: string, cityState?:string } = {}, 
     customMultipliers?: Record<string, number>,
-    getPanIndiaData: boolean = false
+    getPanIndiaData: boolean = false,
+    period: string = 'mtd'
 ): Promise<ProductDetails | null> {
     const product = fullDataset.products.find(p => p.id === productId);
     if (!product) return null;
 
-    // Get data for the filtered scope
-    const filteredData = await getAppData({ ...filters }, {customMultipliers});
+    // Get data for the main selected period (MTD or a specific month)
+    const filteredData = await getAppData({ ...filters }, { customMultipliers, period });
     const filteredPurchases = filteredData.processedPurchases.filter(p => p.productId === productId);
-    const filteredSummary = filteredData.productsSummary.find(p => p.id === productId);
+    const summaryForPeriod = filteredData.productsSummary.find(p => p.id === productId);
+
+    // Get data for the last 3 months for comparison
+    const last3MonthsData = await getAppData({ ...filters }, { customMultipliers, period: '3m' });
+    const summaryLast3Months = last3MonthsData.productsSummary.find(p => p.id === productId);
 
     let panIndiaSummary: ProductSummary | undefined = undefined;
-
-    // If requested, get Pan-India data for comparison
     if (getPanIndiaData) {
-        const panIndiaData = await getAppData({}, { customMultipliers }); // No geo filters
+        const panIndiaData = await getAppData({}, { customMultipliers, period }); // No geo filters, but use the same period
         panIndiaSummary = panIndiaData.productsSummary.find(p => p.id === productId);
     }
     
     return { 
         product, 
         purchases: filteredPurchases, 
-        summary: filteredSummary, 
+        summary: summaryForPeriod, 
+        summaryLast3Months,
         panIndiaSummary 
     };
 }
 
 export async function getVendorDetails(vendorId: string) {
-    const data = await getAppData(); // This will get Pan-India by default
+    const data = await getAppData();
     const vendor = data.vendors.find(v => v.id === vendorId);
     if (!vendor) return null;
     

@@ -57,13 +57,15 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     return f;
   }, [searchParams]);
 
+  const period = searchParams.get('period') || 'mtd';
+
   useEffect(() => {
     setIsLoading(true);
-    getProductDetails(params.id, filters, customMultipliers, showPanIndia).then(data => {
+    getProductDetails(params.id, filters, customMultipliers, showPanIndia, period).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, customMultipliers, filters, showPanIndia]);
+  }, [params.id, customMultipliers, filters, showPanIndia, period]);
 
   const handleMultiplierSave = (newMultiplier: number) => {
     setCustomMultipliers(prev => ({ ...prev, [params.id]: newMultiplier }));
@@ -115,19 +117,19 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     const state = searchParams.get('state');
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
-    const range = searchParams.get('range');
+    const period = searchParams.get('period');
 
     const params = new URLSearchParams();
     if(scope) params.set('scope', scope);
     if(state) params.set('state', state);
     if(city) params.set('city', city);
     if(cityState) params.set('cityState', cityState);
-    if(range) params.set('range', range);
+    if(period) params.set('period', period);
     
     const queryString = params.toString();
 
     // If we came from a filtered dashboard, go back there. Otherwise, go to margin analysis.
-    if (scope === 'state' || scope === 'city') return `/?${queryString}`;
+    if (scope === 'state' || scope === 'city' || period) return `/?${queryString}`;
     return `/margin-analysis?${queryString}`;
   }
 
@@ -139,7 +141,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     notFound();
   }
 
-  const { product, purchases, summary, panIndiaSummary } = details;
+  const { product, purchases, summary, panIndiaSummary, summaryLast3Months } = details;
   const nonOutlierPurchases = purchases.filter(p => !p.isOutlier);
   
   const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
@@ -183,25 +185,57 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
               </div>
           )}
         </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of valid purchase transactions" icon={ShoppingCart} />
-            <KpiCard title="Total Quantity Purchased" value={formatNumber(summary?.totalQuantityPurchased || 0)} description="Cumulative units from valid purchases" icon={ShoppingBag} />
-            <KpiCard title="Best Margin %" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin (non-outlier)" icon={TrendingUp} />
-            <KpiCard title="Worst Margin %" value={`${formatNumber(summary?.worstMargin || 0)}%`} description="Lowest margin (non-outlier)" icon={TrendingDown} />
-            <KpiCard title="Average Margin %" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Overall average margin (non-outlier)" icon={Percent} />
-            <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description="Cumulative margin loss (non-outlier)" icon={DollarSign} />
-            <KpiCard title="Mode Margin %" value={`${formatNumber(summary?.modeMargin || 0)}%`} description="Most frequent margin" icon={Percent} />
-            <KpiCard title="Best Vendor" value={summary?.bestVendor?.name || 'N/A'} description={summary?.bestVendor ? 'Vendor with highest margin' : ''} icon={Truck} />
-            <KpiCard title="Worst Vendor" value={summary?.worstVendor?.name || 'N/A'} description={summary?.worstVendor ? 'Vendor with lowest margin' : ''} icon={Truck} />
-            <KpiCard title="Margin Loss %" value={`${formatNumber(summary?.marginLossPercentage || 0)}%`} description="Total margin loss / total purchase cost" icon={Percent} />
+        
+        {/* KPI Section */}
+        <div>
+            <div className="flex items-center gap-4 mb-4">
+                <Separator />
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">
+                    {period === 'mtd' ? 'Current Month' : `Analysis for ${period}`}
+                </h2>
+                <Separator />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of valid purchase transactions" icon={ShoppingCart} />
+                <KpiCard title="Total Quantity Purchased" value={formatNumber(summary?.totalQuantityPurchased || 0)} description="Cumulative units from valid purchases" icon={ShoppingBag} />
+                <KpiCard title="Best Margin %" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin (non-outlier)" icon={TrendingUp} />
+                <KpiCard title="Worst Margin %" value={`${formatNumber(summary?.worstMargin || 0)}%`} description="Lowest margin (non-outlier)" icon={TrendingDown} />
+                <KpiCard title="Average Margin %" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Overall average margin (non-outlier)" icon={Percent} />
+                <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description="Cumulative margin loss (non-outlier)" icon={DollarSign} />
+                <KpiCard title="Mode Margin %" value={`${formatNumber(summary?.modeMargin || 0)}%`} description="Most frequent margin" icon={Percent} />
+                <KpiCard title="Best Vendor" value={summary?.bestVendor?.name || 'N/A'} description={summary?.bestVendor ? 'Vendor with highest margin' : ''} icon={Truck} />
+                <KpiCard title="Worst Vendor" value={summary?.worstVendor?.name || 'N/A'} description={summary?.worstVendor ? 'Vendor with lowest margin' : ''} icon={Truck} />
+                <KpiCard title="Margin Loss %" value={`${formatNumber(summary?.marginLossPercentage || 0)}%`} description="Total margin loss / total purchase cost" icon={Percent} />
+            </div>
         </div>
 
-        {showPanIndia && panIndiaSummary && (
-          <>
-             <div className="flex items-center gap-4">
+        {summaryLast3Months && (
+          <div className="mt-6">
+             <div className="flex items-center gap-4 mb-4">
                 <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Pan-India Comparison</h2>
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Last 3 Months</h2>
+                <Separator />
+            </div>
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <KpiCard title="Total Purchases" value={formatNumber(summaryLast3Months.purchaseCount)} description="Last 3M valid purchases" icon={ShoppingCart} />
+                <KpiCard title="Total Quantity" value={formatNumber(summaryLast3Months.totalQuantityPurchased)} description="Last 3M cumulative units" icon={ShoppingBag} />
+                <KpiCard title="Best Margin %" value={`${formatNumber(summaryLast3Months.bestMargin)}%`} description="Last 3M highest margin" icon={TrendingUp} />
+                <KpiCard title="Worst Margin %" value={`${formatNumber(summaryLast3Months.worstMargin)}%`} description="Last 3M lowest margin" icon={TrendingDown} />
+                <KpiCard title="Average Margin %" value={`${formatNumber(summaryLast3Months.averageMargin)}%`} description="Last 3M average margin" icon={Percent} />
+                <KpiCard title="Total Margin Loss" value={formatCurrency(summaryLast3Months.totalMarginLoss)} description="Last 3M cumulative margin loss" icon={DollarSign} />
+                <KpiCard title="Mode Margin %" value={`${formatNumber(summaryLast3Months.modeMargin)}%`} description="Last 3M most frequent margin" icon={Percent} />
+                 <KpiCard title="Best Vendor" value={summaryLast3Months?.bestVendor?.name || 'N/A'} description="Last 3M vendor with highest margin" icon={Truck} />
+                <KpiCard title="Worst Vendor" value={summaryLast3Months?.worstVendor?.name || 'N/A'} description="Last 3M vendor with lowest margin" icon={Truck} />
+                <KpiCard title="Margin Loss %" value={`${formatNumber(summaryLast3Months.marginLossPercentage || 0)}%`} description="Last 3M margin loss / total cost" icon={Percent} />
+             </div>
+          </div>
+        )}
+        
+        {showPanIndia && panIndiaSummary && (
+          <div className="mt-6">
+             <div className="flex items-center gap-4 mb-4">
+                <Separator />
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Pan-India Comparison ({period === 'mtd' ? 'Current Month' : `for ${period}`})</h2>
                 <Separator />
             </div>
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -221,10 +255,10 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 <KpiCard title="Worst Vendor" value={panIndiaSummary.worstVendor?.name || 'N/A'} description="Pan-India vendor with lowest margin" icon={Truck} />
                 <KpiCard title="Margin Loss %" value={`${formatNumber(panIndiaSummary.marginLossPercentage || 0)}%`} description="Pan-India margin loss / total cost" icon={Percent} />
              </div>
-          </>
+          </div>
         )}
 
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-6">
             <Card>
                 <CardHeader>
                     <CardTitle>Purchase Price Trend</CardTitle>
@@ -249,7 +283,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 <div>
                     <CardTitle>Purchase History</CardTitle>
                     <CardDescription>
-                        Displaying purchase records for the selected scope. Pan-India comparison only affects KPIs above.
+                        Displaying purchase records for the selected scope and period.
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
