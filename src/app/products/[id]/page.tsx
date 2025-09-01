@@ -202,33 +202,11 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         </div>
         
         {/* KPI Section */}
-        <div>
-            <div className="flex items-center gap-4 mb-4">
-                <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">
-                    {period === 'mtd' ? 'Current Month' : `Analysis for ${period}`}
-                </h2>
-                <Separator />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <KpiCard title="Total Purchases" value={formatNumber(summary?.purchaseCount || 0)} description="Number of valid purchase transactions" icon={ShoppingCart} />
-                <KpiCard title="Total Quantity Purchased" value={formatNumber(summary?.totalQuantityPurchased || 0)} description="Cumulative units from valid purchases" icon={ShoppingBag} />
-                <KpiCard title="Best Margin %" value={`${formatNumber(summary?.bestMargin || 0)}%`} description="Highest margin (non-outlier)" icon={TrendingUp} />
-                <KpiCard title="Worst Margin %" value={`${formatNumber(summary?.worstMargin || 0)}%`} description="Lowest margin (non-outlier)" icon={TrendingDown} />
-                <KpiCard title="Average Margin %" value={`${formatNumber(summary?.averageMargin || 0)}%`} description="Overall average margin (non-outlier)" icon={Percent} />
-                <KpiCard title="Total Margin Loss" value={formatCurrency(summary?.totalMarginLoss || 0)} description="Cumulative margin loss (non-outlier)" icon={DollarSign} />
-                <KpiCard title="Mode Margin %" value={`${formatNumber(summary?.modeMargin || 0)}%`} description="Most frequent margin" icon={Percent} />
-                <KpiCard title="Best Vendor" value={summary?.bestVendor?.name || 'N/A'} description={summary?.bestVendor ? 'Vendor with highest margin' : ''} icon={Truck} />
-                <KpiCard title="Worst Vendor" value={summary?.worstVendor?.name || 'N/A'} description={summary?.worstVendor ? 'Vendor with lowest margin' : ''} icon={Truck} />
-                <KpiCard title="Margin Loss %" value={`${formatNumber(summary?.marginLossPercentage || 0)}%`} description="Total margin loss / total purchase cost" icon={Percent} />
-            </div>
-        </div>
-
         {summaryLast3Months && (
-          <div className="mt-6">
+          <div>
              <div className="flex items-center gap-4 mb-4">
                 <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Last 3 Months</h2>
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">Last 3 Months Analysis</h2>
                 <Separator />
             </div>
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -277,7 +255,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             <Card>
                 <CardHeader>
                     <CardTitle>Purchase Price Trend</CardTitle>
-                    <CardDescription>Price fluctuation over time (filtered view).</CardDescription>
+                    <CardDescription>Price fluctuation over time (for the selected period).</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ProductPriceTrendChart data={nonOutlierPurchases} />
@@ -286,7 +264,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             <Card>
                 <CardHeader>
                     <CardTitle>Margin Trend</CardTitle>
-                    <CardDescription>Margin % fluctuation over time (filtered view).</CardDescription>
+                    <CardDescription>Margin % fluctuation over time (for the selected period).</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ProductMarginTrendChart data={nonOutlierPurchases} />
