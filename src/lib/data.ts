@@ -182,18 +182,14 @@ export async function getAppData(
   let endDate: Date;
   let startDate: Date;
 
-  if (options.period === 'mtd') {
+  if (options.period === 'mtd' || !options.period) {
       endDate = startOfToday();
       startDate = startOfMonth(subMonths(now, 3)); 
-  } else if (options.period) {
+  } else {
       const [year, month] = options.period.split('-').map(Number);
       const selectedMonthDate = new Date(year, month - 1, 1);
       endDate = endOfMonth(selectedMonthDate);
       startDate = startOfMonth(subMonths(selectedMonthDate, 3));
-  } else {
-     // Default case if no period is provided, though the app logic should always provide one.
-     endDate = startOfToday();
-     startDate = startOfMonth(subMonths(now, 3));
   }
 
   const timeFilteredPurchases = allPurchases.filter(p => {
@@ -418,8 +414,12 @@ export async function getProductDetails(
     };
 }
 
-export async function getVendorDetails(vendorId: string) {
-    const data = await getAppData({}, { period: 'mtd' }); // Default to MTD for vendor details
+export async function getVendorDetails(
+    vendorId: string,
+    filters: { state?: string; city?: string, cityState?:string } = {},
+    period: string = 'mtd'
+) {
+    const data = await getAppData(filters, { period }); 
     const vendor = data.vendors.find(v => v.id === vendorId);
     if (!vendor) return null;
     

@@ -1,7 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { formatCurrency } from "@/lib/utils";
 
 interface ChartData {
@@ -16,11 +16,13 @@ interface VendorMarginLossChartProps {
 
 export default function VendorMarginLossChart({ data }: VendorMarginLossChartProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleBarClick = (payload: any) => {
     if (payload && payload.activePayload && payload.activePayload[0]) {
       const vendorId = payload.activePayload[0].payload.id;
-      router.push(`/vendors/${vendorId}`);
+      const params = new URLSearchParams(searchParams);
+      router.push(`/vendors/${vendorId}?${params.toString()}`);
     }
   };
 
