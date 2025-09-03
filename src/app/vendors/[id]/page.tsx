@@ -10,7 +10,7 @@ import { getVendorDetails } from "@/lib/data";
 import VendorProductsTable from "@/components/tables/VendorProductsTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { Vendor, VendorSummary, VendorProductSummary } from "@/lib/types";
+import type { Vendor, VendorSummary, VendorProductSummary, ValueOutlierFilter } from "@/lib/types";
 import Loading from "@/app/loading";
 
 type VendorDetailPageProps = {
@@ -35,6 +35,7 @@ export default function VendorDetailPage({ params }: VendorDetailPageProps) {
   const state = searchParams.get('state');
   const city = searchParams.get('city');
   const cityState = searchParams.get('cityState');
+  const valueOutlierFilter = searchParams.get('vof') as ValueOutlierFilter | undefined;
 
   useEffect(() => {
     setIsLoading(true);
@@ -46,11 +47,11 @@ export default function VendorDetailPage({ params }: VendorDetailPageProps) {
       filters.state = cityState;
     }
     
-    getVendorDetails(params.id, filters, period).then(data => {
+    getVendorDetails(params.id, filters, period, valueOutlierFilter).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, period, scope, state, city, cityState]);
+  }, [params.id, period, scope, state, city, cityState, valueOutlierFilter]);
   
   const getBackLink = () => {
     const params = new URLSearchParams(searchParams);

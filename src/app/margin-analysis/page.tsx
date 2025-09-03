@@ -8,7 +8,7 @@ import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 import { Search, FileDown } from "lucide-react";
-import type { MarginAnalysisProductSummary } from '@/lib/types';
+import type { MarginAnalysisProductSummary, ValueOutlierFilter } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,6 +24,7 @@ function MarginAnalysisContent() {
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
     const period = searchParams.get('period');
+    const valueOutlierFilter = searchParams.get('vof') as ValueOutlierFilter | undefined;
 
     const [allProductsSummary, setAllProductsSummary] = useState<MarginAnalysisProductSummary[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -41,8 +42,11 @@ function MarginAnalysisContent() {
     }, [scope, state, city, cityState]);
     
     const options = useMemo(() => {
-        return { period: period as 'mtd' | string };
-    }, [period]);
+        return { 
+            period: period as 'mtd' | string,
+            valueOutlierFilter
+        };
+    }, [period, valueOutlierFilter]);
 
     useEffect(() => {
         setIsLoading(true);

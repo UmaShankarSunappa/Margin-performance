@@ -26,7 +26,8 @@ export interface ProcessedPurchase extends Purchase {
   margin: number;
   marginLoss: number;
   isBestMargin: boolean;
-  isOutlier: boolean;
+  isMarginOutlier: boolean;
+  isValueOutlier: boolean;
   benchmarkMargin: number;
   modeMargin: number;
 }
@@ -93,3 +94,5 @@ export interface ProductDetails {
   panIndiaSummary?: ProductSummary;
   monthlyAverages: MonthlyAverage[];
 }
+
+export type ValueOutlierFilter = 'none' | '1percent' | '5percent';

@@ -18,7 +18,7 @@ import ProductMarginTrendChart from "@/components/charts/ProductMarginTrendChart
 import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { Product, ProcessedPurchase, ProductSummary, ProductDetails } from "@/lib/types";
+import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, ValueOutlierFilter } from "@/lib/types";
 import { useEffect, useState, useMemo } from "react";
 import Loading from "@/app/loading";
 import { MultiplierAdjustmentDialog } from "@/components/dialogs/MultiplierAdjustmentDialog";
@@ -58,14 +58,15 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   }, [searchParams]);
 
   const period = searchParams.get('period') || 'mtd';
+  const valueOutlierFilter = (searchParams.get('vof') as ValueOutlierFilter) || 'none';
 
   useEffect(() => {
     setIsLoading(true);
-    getProductDetails(params.id, filters, customMultipliers, showPanIndia, period).then(data => {
+    getProductDetails(params.id, filters, customMultipliers, showPanIndia, period, valueOutlierFilter).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, customMultipliers, filters, showPanIndia, period]);
+  }, [params.id, customMultipliers, filters, showPanIndia, period, valueOutlierFilter]);
 
   const handleMultiplierSave = (newMultiplier: number) => {
     setCustomMultipliers(prev => ({ ...prev, [params.id]: newMultiplier }));
@@ -83,8 +84,9 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         'Quantity': p.quantity,
         'Cost Price': p.purchasePrice,
         'Margin %': p.margin,
-        'Margin Loss': p.isOutlier ? 'N/A' : p.marginLoss,
-        'Is Outlier?': p.isOutlier ? 'Yes' : 'No',
+        'Margin Loss': p.isMarginOutlier ? 'N/A' : p.marginLoss,
+        'Is Margin Outlier?': p.isMarginOutlier ? 'Yes' : 'No',
+        'Is Value Outlier?': p.isValueOutlier ? 'Yes' : 'No',
         'Is Best Margin?': p.isBestMargin ? 'Yes' : 'No',
     }));
     
@@ -102,7 +104,8 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         { wch: 15 }, // Cost Price
         { wch: 15 }, // Margin %
         { wch: 15 }, // Margin Loss
-        { wch: 12 }, // Is Outlier?
+        { wch: 18 }, // Is Margin Outlier?
+        { wch: 18 }, // Is Value Outlier?
         { wch: 15 }, // Is Best Margin?
     ];
     
@@ -118,6 +121,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
     const period = searchParams.get('period');
+    const vof = searchParams.get('vof');
 
     const params = new URLSearchParams();
     if(scope) params.set('scope', scope);
@@ -125,6 +129,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     if(city) params.set('city', city);
     if(cityState) params.set('cityState', cityState);
     if(period) params.set('period', period);
+    if(vof) params.set('vof', vof);
     
     const queryString = params.toString();
 

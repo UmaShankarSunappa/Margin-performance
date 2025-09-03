@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin, Calendar, BarChartHorizontal } from "lucide-react";
+import { DollarSign, Package, Truck, MapPin, Calendar, BarChartHorizontal, Filter } from "lucide-react";
 
 import Header from "@/components/Header";
 import { getHomePageData, getFinancialYearMonths } from "@/lib/data";
@@ -18,7 +18,7 @@ import KpiCard from "@/components/dashboard/KPI";
 import ProductMarginLossChart from "@/components/charts/ProductMarginLossChart";
 import VendorMarginLossChart from "@/components/charts/VendorMarginLossChart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { HomePageData } from "@/lib/types";
+import type { HomePageData, ValueOutlierFilter } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
@@ -44,6 +44,7 @@ export default function Home() {
   const [selectedCityState, setSelectedCityState] = useState<string>(() => searchParams.get('cityState') || 'Telangana');
   const [selectedCity, setSelectedCity] = useState<string>(() => searchParams.get('city') || 'Hyderabad');
   const [period, setPeriod] = useState<Period>(() => searchParams.get('period') || 'mtd');
+  const [valueOutlierFilter, setValueOutlierFilter] = useState<ValueOutlierFilter>(() => (searchParams.get('vof') as ValueOutlierFilter) || 'none');
   
   const financialYearMonths = useMemo(() => getFinancialYearMonths(), []);
 
@@ -55,6 +56,7 @@ export default function Home() {
       let filter: { state?: string, city?: string, cityState?: string } = {};
       const currentScope = params.get('scope') as Scope || 'pan-india';
       const currentPeriod = params.get('period') as Period || 'mtd';
+      const currentValueOutlierFilter = params.get('vof') as ValueOutlierFilter || 'none';
 
       if (currentScope === 'state') {
         const state = params.get('state');
@@ -65,7 +67,7 @@ export default function Home() {
         if (city && cityState) filter = { city, state: cityState };
       }
       
-      const homePageData = await getHomePageData(filter, currentPeriod);
+      const homePageData = await getHomePageData(filter, currentPeriod, currentValueOutlierFilter);
 
       setData(homePageData);
       setIsLoading(false);
@@ -96,12 +98,13 @@ export default function Home() {
        newParams.city = selectedCity;
     }
     newParams.period = period;
+    newParams.vof = valueOutlierFilter;
     updateUrlParams(newParams);
   };
   
   const handleStateChange = (state: string) => {
       setSelectedState(state);
-      updateUrlParams({ scope: 'state', state: state, city: null, cityState: null, period: period });
+      updateUrlParams({ scope: 'state', state: state, city: null, cityState: null, period: period, vof: valueOutlierFilter });
   }
 
   const handleCityStateChange = (state: string) => {
@@ -109,12 +112,12 @@ export default function Home() {
     const citiesForNewState = geoLocations.citiesByState[state] || [];
     const newCity = citiesForNewState.length > 0 ? citiesForNewState[0] : '';
     setSelectedCity(newCity);
-    updateUrlParams({ scope: 'city', cityState: state, city: newCity, state: null, period: period });
+    updateUrlParams({ scope: 'city', cityState: state, city: newCity, state: null, period: period, vof: valueOutlierFilter });
   };
 
   const handleCityChange = (city: string) => {
       setSelectedCity(city);
-      updateUrlParams({ scope: 'city', cityState: selectedCityState, city, state: null, period: period });
+      updateUrlParams({ scope: 'city', cityState: selectedCityState, city, state: null, period: period, vof: valueOutlierFilter });
   }
   
   const handlePeriodChange = (value: Period) => {
@@ -123,6 +126,13 @@ export default function Home() {
     currentParams.set('period', value);
     router.push(`${pathname}?${currentParams.toString()}`);
   }
+  
+  const handleValueOutlierFilterChange = (value: ValueOutlierFilter) => {
+    setValueOutlierFilter(value);
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set('vof', value);
+    router.push(`${pathname}?${currentParams.toString()}`);
+  };
 
   const getCitiesForSelectedState = () => {
       return geoLocations.citiesByState[selectedCityState] || [];
@@ -204,6 +214,18 @@ export default function Home() {
                                 <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
                             ))}
                         </SelectContent>
+                    </Select>
+                    
+                    <Select onValueChange={handleValueOutlierFilterChange} value={valueOutlierFilter}>
+                      <SelectTrigger className="w-full sm:w-[240px]">
+                        <Filter className="mr-2" />
+                        <SelectValue placeholder="Value Outlier Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="1percent">Exclude purchases &lt; 1% of SKU value</SelectItem>
+                        <SelectItem value="5percent">Exclude purchases &lt; 5% of SKU value</SelectItem>
+                      </SelectContent>
                     </Select>
 
                     <Select onValueChange={(value: Scope) => handleScopeChange(value)} value={scope}>
