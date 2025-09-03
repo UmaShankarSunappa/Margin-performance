@@ -18,7 +18,7 @@ import KpiCard from "@/components/dashboard/KPI";
 import ProductMarginLossChart from "@/components/charts/ProductMarginLossChart";
 import VendorMarginLossChart from "@/components/charts/VendorMarginLossChart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { HomePageData, ValueOutlierFilter } from "@/lib/types";
+import type { HomePageData, QuantityOutlierFilter } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
@@ -44,7 +44,7 @@ export default function Home() {
   const [selectedCityState, setSelectedCityState] = useState<string>(() => searchParams.get('cityState') || 'Telangana');
   const [selectedCity, setSelectedCity] = useState<string>(() => searchParams.get('city') || 'Hyderabad');
   const [period, setPeriod] = useState<Period>(() => searchParams.get('period') || 'mtd');
-  const [valueOutlierFilter, setValueOutlierFilter] = useState<ValueOutlierFilter>(() => (searchParams.get('vof') as ValueOutlierFilter) || 'none');
+  const [quantityOutlierFilter, setQuantityOutlierFilter] = useState<QuantityOutlierFilter>(() => (searchParams.get('qof') as QuantityOutlierFilter) || 'none');
   
   const financialYearMonths = useMemo(() => getFinancialYearMonths(), []);
 
@@ -56,7 +56,7 @@ export default function Home() {
       let filter: { state?: string, city?: string, cityState?: string } = {};
       const currentScope = params.get('scope') as Scope || 'pan-india';
       const currentPeriod = params.get('period') as Period || 'mtd';
-      const currentValueOutlierFilter = params.get('vof') as ValueOutlierFilter || 'none';
+      const currentQuantityOutlierFilter = params.get('qof') as QuantityOutlierFilter || 'none';
 
       if (currentScope === 'state') {
         const state = params.get('state');
@@ -67,7 +67,7 @@ export default function Home() {
         if (city && cityState) filter = { city, state: cityState };
       }
       
-      const homePageData = await getHomePageData(filter, currentPeriod, currentValueOutlierFilter);
+      const homePageData = await getHomePageData(filter, currentPeriod, currentQuantityOutlierFilter);
 
       setData(homePageData);
       setIsLoading(false);
@@ -98,13 +98,13 @@ export default function Home() {
        newParams.city = selectedCity;
     }
     newParams.period = period;
-    newParams.vof = valueOutlierFilter;
+    newParams.qof = quantityOutlierFilter;
     updateUrlParams(newParams);
   };
   
   const handleStateChange = (state: string) => {
       setSelectedState(state);
-      updateUrlParams({ scope: 'state', state: state, city: null, cityState: null, period: period, vof: valueOutlierFilter });
+      updateUrlParams({ scope: 'state', state: state, city: null, cityState: null, period: period, qof: quantityOutlierFilter });
   }
 
   const handleCityStateChange = (state: string) => {
@@ -112,12 +112,12 @@ export default function Home() {
     const citiesForNewState = geoLocations.citiesByState[state] || [];
     const newCity = citiesForNewState.length > 0 ? citiesForNewState[0] : '';
     setSelectedCity(newCity);
-    updateUrlParams({ scope: 'city', cityState: state, city: newCity, state: null, period: period, vof: valueOutlierFilter });
+    updateUrlParams({ scope: 'city', cityState: state, city: newCity, state: null, period: period, qof: quantityOutlierFilter });
   };
 
   const handleCityChange = (city: string) => {
       setSelectedCity(city);
-      updateUrlParams({ scope: 'city', cityState: selectedCityState, city, state: null, period: period, vof: valueOutlierFilter });
+      updateUrlParams({ scope: 'city', cityState: selectedCityState, city, state: null, period: period, qof: quantityOutlierFilter });
   }
   
   const handlePeriodChange = (value: Period) => {
@@ -127,10 +127,10 @@ export default function Home() {
     router.push(`${pathname}?${currentParams.toString()}`);
   }
   
-  const handleValueOutlierFilterChange = (value: ValueOutlierFilter) => {
-    setValueOutlierFilter(value);
+  const handleQuantityOutlierFilterChange = (value: QuantityOutlierFilter) => {
+    setQuantityOutlierFilter(value);
     const currentParams = new URLSearchParams(searchParams);
-    currentParams.set('vof', value);
+    currentParams.set('qof', value);
     router.push(`${pathname}?${currentParams.toString()}`);
   };
 
@@ -216,15 +216,15 @@ export default function Home() {
                         </SelectContent>
                     </Select>
                     
-                    <Select onValueChange={handleValueOutlierFilterChange} value={valueOutlierFilter}>
+                    <Select onValueChange={handleQuantityOutlierFilterChange} value={quantityOutlierFilter}>
                       <SelectTrigger className="w-full sm:w-[240px]">
                         <Filter className="mr-2" />
-                        <SelectValue placeholder="Value Outlier Filter" />
+                        <SelectValue placeholder="Quantity Outlier Filter" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="1percent">Exclude purchases &lt; 1% of SKU value</SelectItem>
-                        <SelectItem value="5percent">Exclude purchases &lt; 5% of SKU value</SelectItem>
+                        <SelectItem value="1percent">Exclude purchases &lt; 1% of SKU quantity</SelectItem>
+                        <SelectItem value="5percent">Exclude purchases &lt; 5% of SKU quantity</SelectItem>
                       </SelectContent>
                     </Select>
 

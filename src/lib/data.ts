@@ -1,4 +1,4 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, ValueOutlierFilter } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth, parse } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -174,7 +174,7 @@ export function getFinancialYearMonths(startYear = 2025) {
 
 export async function getAppData(
     geoFilters: { state?: string; city?: string, cityState?: string } = {},
-    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string, valueOutlierFilter?: ValueOutlierFilter } = {}
+    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string, quantityOutlierFilter?: QuantityOutlierFilter } = {}
 ): Promise<AppData> {
   const allPurchases = fullDataset.purchases;
   
@@ -221,26 +221,24 @@ export async function getAppData(
     return { ...purchase, margin };
   });
   
-  // Value-based outlier filtering
-  let valueFilteredPurchases = filteredPurchases;
-  if (options.valueOutlierFilter && options.valueOutlierFilter !== 'none') {
-    const valueOutlierThresholdPercentage = options.valueOutlierFilter === '1percent' ? 0.01 : 0.05;
-    const skuTotalValues = new Map<string, number>();
+  // Quantity-based outlier filtering
+  let quantityFilteredPurchases = filteredPurchases;
+  if (options.quantityOutlierFilter && options.quantityOutlierFilter !== 'none') {
+    const quantityOutlierThresholdPercentage = options.quantityOutlierFilter === '1percent' ? 0.01 : 0.05;
+    const skuTotalQuantities = new Map<string, number>();
 
-    // Calculate total value for each SKU within the period
+    // Calculate total quantity for each SKU within the period
     filteredPurchases.forEach(p => {
-        const value = p.purchasePrice * p.quantity;
-        skuTotalValues.set(p.productId, (skuTotalValues.get(p.productId) || 0) + value);
+        skuTotalQuantities.set(p.productId, (skuTotalQuantities.get(p.productId) || 0) + p.quantity);
     });
 
-    valueFilteredPurchases = filteredPurchases.map(p => {
-        const totalValue = skuTotalValues.get(p.productId) || 0;
-        const threshold = totalValue * valueOutlierThresholdPercentage;
-        const purchaseValue = p.purchasePrice * p.quantity;
-        return { ...p, isValueOutlier: purchaseValue < threshold };
+    quantityFilteredPurchases = filteredPurchases.map(p => {
+        const totalQuantity = skuTotalQuantities.get(p.productId) || 0;
+        const threshold = totalQuantity * quantityOutlierThresholdPercentage;
+        return { ...p, isQuantityOutlier: p.quantity < threshold };
     });
   } else {
-     valueFilteredPurchases = filteredPurchases.map(p => ({...p, isValueOutlier: false }));
+     quantityFilteredPurchases = filteredPurchases.map(p => ({...p, isQuantityOutlier: false }));
   }
 
 
@@ -255,12 +253,12 @@ export async function getAppData(
       const multiplier = options.customMultipliers?.[product.id] ?? 4.0;
       const outlierThreshold = multiplier * modeMargin;
       
-      const nonOutlierPurchases = valueFilteredPurchases
+      const nonOutlierPurchases = quantityFilteredPurchases
         .map(p => {
             const fullPurchase = allPurchasesWithMargin.find(pwm => pwm.id === p.id)!;
-            return { ...fullPurchase, isValueOutlier: p.isValueOutlier };
+            return { ...fullPurchase, isQuantityOutlier: p.isQuantityOutlier };
         })
-        .filter(p => p.productId === product.id && p.margin < outlierThreshold && !p.isValueOutlier);
+        .filter(p => p.productId === product.id && p.margin < outlierThreshold && !p.isQuantityOutlier);
       
       let bestMargin = 0;
       let bestPrice = product.sellingPrice;
@@ -282,7 +280,7 @@ export async function getAppData(
       productBenchmarks.set(product.id, { mode: modeMargin, bestMargin, bestPrice });
   }
 
-  const processedPurchases: ProcessedPurchase[] = valueFilteredPurchases.map(p => {
+  const processedPurchases: ProcessedPurchase[] = quantityFilteredPurchases.map(p => {
     const product = productMap.get(p.productId)!;
     const vendor = vendorMap.get(p.vendorId)!;
     const benchmark = productBenchmarks.get(p.productId);
@@ -290,7 +288,7 @@ export async function getAppData(
     const margin = purchaseWithMargin.margin;
 
     if (!benchmark) {
-        return { ...p, margin, product, vendor, marginLoss: 0, isBestMargin: false, isMarginOutlier: false, isValueOutlier: p.isValueOutlier, benchmarkMargin: margin, modeMargin: 0 };
+        return { ...p, margin, product, vendor, marginLoss: 0, isBestMargin: false, isMarginOutlier: false, isQuantityOutlier: p.isQuantityOutlier, benchmarkMargin: margin, modeMargin: 0 };
     }
 
     const { mode, bestMargin, bestPrice } = benchmark;
@@ -299,14 +297,14 @@ export async function getAppData(
     const isMarginOutlier = margin >= outlierThreshold;
 
     let marginLoss = 0;
-    if (!isMarginOutlier && !p.isValueOutlier) {
+    if (!isMarginOutlier && !p.isQuantityOutlier) {
       const marginDifference = bestMargin - margin;
       const lossPerUnit = product.sellingPrice * (marginDifference / 100);
       const totalLoss = lossPerUnit * p.quantity;
       marginLoss = totalLoss > 0 ? totalLoss : 0;
     }
     
-    return { ...p, margin, product, vendor, marginLoss, isBestMargin: p.purchasePrice === bestPrice && !isMarginOutlier && !p.isValueOutlier, isMarginOutlier, isValueOutlier: p.isValueOutlier, benchmarkMargin: bestMargin, modeMargin: mode };
+    return { ...p, margin, product, vendor, marginLoss, isBestMargin: p.purchasePrice === bestPrice && !isMarginOutlier && !p.isQuantityOutlier, isMarginOutlier, isQuantityOutlier: p.isQuantityOutlier, benchmarkMargin: bestMargin, modeMargin: mode };
   });
   
   const totalMarginLoss = processedPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
@@ -314,7 +312,7 @@ export async function getAppData(
   const productsSummary: ProductSummary[] = products.map(product => {
     const productPurchases = processedPurchases.filter(p => p.productId === product.id);
     if (productPurchases.length === 0) return null;
-    const nonOutlierPurchases = productPurchases.filter(p => !p.isMarginOutlier && !p.isValueOutlier);
+    const nonOutlierPurchases = productPurchases.filter(p => !p.isMarginOutlier && !p.isQuantityOutlier);
     if (nonOutlierPurchases.length === 0) return null;
 
     const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
@@ -344,7 +342,7 @@ export async function getAppData(
   }).filter((p): p is ProductSummary => p !== null);
 
   const vendorsSummary: VendorSummary[] = vendors.map(vendor => {
-    const vendorPurchases = processedPurchases.filter(p => p.vendorId === vendor.id && !p.isMarginOutlier && !p.isValueOutlier);
+    const vendorPurchases = processedPurchases.filter(p => p.vendorId === vendor.id && !p.isMarginOutlier && !p.isQuantityOutlier);
     if(vendorPurchases.length === 0) return null;
     const totalMarginLoss = vendorPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     return { id: vendor.id, name: vendor.name, totalMarginLoss, productsPurchased: new Set(vendorPurchases.map(p => p.productId)).size };
@@ -353,7 +351,7 @@ export async function getAppData(
   const marginAnalysisSummary: MarginAnalysisProductSummary[] = products.map(product => {
      const productPurchases = processedPurchases.filter(p => p.productId === product.id);
     if (productPurchases.length === 0) return null;
-    const nonOutlierPurchases = productPurchases.filter(p => !p.isMarginOutlier && !p.isValueOutlier);
+    const nonOutlierPurchases = productPurchases.filter(p => !p.isMarginOutlier && !p.isQuantityOutlier);
     const totalPurchaseCost = nonOutlierPurchases.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
     const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     const marginLossPercentage = totalPurchaseCost > 0 ? (totalMarginLoss / totalPurchaseCost) * 100 : 0;
@@ -388,12 +386,12 @@ export async function getProductDetails(
     customMultipliers?: Record<string, number>,
     getPanIndiaData: boolean = false,
     period: string = 'mtd',
-    valueOutlierFilter: ValueOutlierFilter = 'none'
+    quantityOutlierFilter: QuantityOutlierFilter = 'none'
 ): Promise<ProductDetails | null> {
     const product = fullDataset.products.find(p => p.id === productId);
     if (!product) return null;
 
-    const options = { customMultipliers, period, valueOutlierFilter };
+    const options = { customMultipliers, period, quantityOutlierFilter };
 
     const dataForPeriod = await getAppData({ ...filters }, options);
     const purchasesForPeriod = dataForPeriod.processedPurchases.filter(p => p.productId === productId);
@@ -402,9 +400,9 @@ export async function getProductDetails(
     const now = new Date();
     const financialYearStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
     
-    const allProductPurchasesYTD = (await getAppData({...filters}, { customMultipliers, period: 'mtd', valueOutlierFilter })) // Use MTD to get up to current date for YTD
+    const allProductPurchasesYTD = (await getAppData({...filters}, { customMultipliers, period: 'mtd', quantityOutlierFilter })) // Use MTD to get up to current date for YTD
       .processedPurchases
-      .filter(p => p.productId === productId && !p.isMarginOutlier && !p.isValueOutlier && parseISO(p.date) >= financialYearStart);
+      .filter(p => p.productId === productId && !p.isMarginOutlier && !p.isQuantityOutlier && parseISO(p.date) >= financialYearStart);
       
     const monthlyAverages: MonthlyAverage[] = [];
     for(let i = 0; i < 12; i++){
@@ -447,9 +445,9 @@ export async function getVendorDetails(
     vendorId: string,
     filters: { state?: string; city?: string, cityState?:string } = {},
     period: string = 'mtd',
-    valueOutlierFilter: ValueOutlierFilter = 'none'
+    quantityOutlierFilter: QuantityOutlierFilter = 'none'
 ) {
-    const data = await getAppData(filters, { period, valueOutlierFilter }); 
+    const data = await getAppData(filters, { period, quantityOutlierFilter }); 
     const vendor = data.vendors.find(v => v.id === vendorId);
     if (!vendor) return null;
     
@@ -460,7 +458,7 @@ export async function getVendorDetails(
     const productIds = [...new Set(vendorPurchases.map(p => p.productId))];
 
     const productsSummaryForVendor: VendorProductSummary[] = productIds.map(productId => {
-        const purchasesOfProductFromVendor = vendorPurchases.filter(p => p.productId === productId && !p.isMarginOutlier && !p.isValueOutlier);
+        const purchasesOfProductFromVendor = vendorPurchases.filter(p => p.productId === productId && !p.isMarginOutlier && !p.isQuantityOutlier);
         if (purchasesOfProductFromVendor.length === 0) return null;
         
         const totalMargin = purchasesOfProductFromVendor.reduce((acc, p) => acc + p.margin, 0);
@@ -484,10 +482,10 @@ export async function getVendorDetails(
 export async function getHomePageData(
     geoFilters: { state?: string; city?: string, cityState?: string } = {},
     period: 'mtd' | string,
-    valueOutlierFilter: ValueOutlierFilter
+    quantityOutlierFilter: QuantityOutlierFilter
 ): Promise<HomePageData> {
     
-    const analysisData = await getAppData(geoFilters, { period, valueOutlierFilter });
+    const analysisData = await getAppData(geoFilters, { period, quantityOutlierFilter });
 
     return {
         analysisData,

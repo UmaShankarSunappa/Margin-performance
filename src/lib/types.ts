@@ -27,7 +27,7 @@ export interface ProcessedPurchase extends Purchase {
   marginLoss: number;
   isBestMargin: boolean;
   isMarginOutlier: boolean;
-  isValueOutlier: boolean;
+  isQuantityOutlier: boolean;
   benchmarkMargin: number;
   modeMargin: number;
 }
@@ -95,4 +95,4 @@ export interface ProductDetails {
   monthlyAverages: MonthlyAverage[];
 }
 
-export type ValueOutlierFilter = 'none' | '1percent' | '5percent';
+export type QuantityOutlierFilter = 'none' | '1percent' | '5percent';

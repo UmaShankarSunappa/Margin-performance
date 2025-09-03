@@ -35,14 +35,14 @@ export default function ProductPurchasesTable({ purchases }: ProductPurchasesTab
         <TableBody>
             {purchases.map((p) => (
             <TableRow key={p.id} className={cn(
-                p.isBestMargin && !p.isMarginOutlier && !p.isValueOutlier && "bg-primary/20",
-                (p.isMarginOutlier || p.isValueOutlier) && "bg-destructive/10 text-muted-foreground"
+                p.isBestMargin && !p.isMarginOutlier && !p.isQuantityOutlier && "bg-primary/20",
+                (p.isMarginOutlier || p.isQuantityOutlier) && "bg-destructive/10 text-muted-foreground"
             )}>
                 <TableCell>
                     <Link href={`/vendors/${p.vendorId}?${new URLSearchParams(window.location.search)}`} className="font-medium hover:underline">
                         {p.vendor.name}
                     </Link>
-                    {p.isBestMargin && !p.isMarginOutlier && !p.isValueOutlier && <Badge variant="outline" className="ml-2 border-primary text-primary">Best Margin</Badge>}
+                    {p.isBestMargin && !p.isMarginOutlier && !p.isQuantityOutlier && <Badge variant="outline" className="ml-2 border-primary text-primary">Best Margin</Badge>}
                     {p.isMarginOutlier && (
                         <TooltipProvider>
                             <Tooltip>
@@ -55,14 +55,14 @@ export default function ProductPurchasesTable({ purchases }: ProductPurchasesTab
                             </Tooltip>
                         </TooltipProvider>
                     )}
-                     {p.isValueOutlier && (
+                     {p.isQuantityOutlier && (
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Badge variant="destructive" className="ml-2 cursor-help">Value Outlier</Badge>
+                                    <Badge variant="destructive" className="ml-2 cursor-help">Quantity Outlier</Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>This purchase's value was too low and excluded from analysis based on your filter.</p>
+                                    <p>This purchase's quantity was too low and excluded from analysis based on your filter.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -72,8 +72,8 @@ export default function ProductPurchasesTable({ purchases }: ProductPurchasesTab
                 <TableCell className="text-right">{formatNumber(p.quantity)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(p.purchasePrice)}</TableCell>
                 <TableCell className="text-right">{formatNumber(p.margin)}%</TableCell>
-                <TableCell className={cn("text-right", p.marginLoss > 0 && !p.isMarginOutlier && !p.isValueOutlier && "text-destructive")}>
-                    {p.isMarginOutlier || p.isValueOutlier ? 'N/A' : formatCurrency(p.marginLoss)}
+                <TableCell className={cn("text-right", p.marginLoss > 0 && !p.isMarginOutlier && !p.isQuantityOutlier && "text-destructive")}>
+                    {p.isMarginOutlier || p.isQuantityOutlier ? 'N/A' : formatCurrency(p.marginLoss)}
                 </TableCell>
             </TableRow>
             ))}

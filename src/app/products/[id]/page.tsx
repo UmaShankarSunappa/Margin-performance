@@ -18,7 +18,7 @@ import ProductMarginTrendChart from "@/components/charts/ProductMarginTrendChart
 import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, ValueOutlierFilter } from "@/lib/types";
+import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, QuantityOutlierFilter } from "@/lib/types";
 import { useEffect, useState, useMemo } from "react";
 import Loading from "@/app/loading";
 import { MultiplierAdjustmentDialog } from "@/components/dialogs/MultiplierAdjustmentDialog";
@@ -58,15 +58,15 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   }, [searchParams]);
 
   const period = searchParams.get('period') || 'mtd';
-  const valueOutlierFilter = (searchParams.get('vof') as ValueOutlierFilter) || 'none';
+  const quantityOutlierFilter = (searchParams.get('qof') as QuantityOutlierFilter) || 'none';
 
   useEffect(() => {
     setIsLoading(true);
-    getProductDetails(params.id, filters, customMultipliers, showPanIndia, period, valueOutlierFilter).then(data => {
+    getProductDetails(params.id, filters, customMultipliers, showPanIndia, period, quantityOutlierFilter).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, customMultipliers, filters, showPanIndia, period, valueOutlierFilter]);
+  }, [params.id, customMultipliers, filters, showPanIndia, period, quantityOutlierFilter]);
 
   const handleMultiplierSave = (newMultiplier: number) => {
     setCustomMultipliers(prev => ({ ...prev, [params.id]: newMultiplier }));
@@ -86,7 +86,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         'Margin %': p.margin,
         'Margin Loss': p.isMarginOutlier ? 'N/A' : p.marginLoss,
         'Is Margin Outlier?': p.isMarginOutlier ? 'Yes' : 'No',
-        'Is Value Outlier?': p.isValueOutlier ? 'Yes' : 'No',
+        'Is Quantity Outlier?': p.isQuantityOutlier ? 'Yes' : 'No',
         'Is Best Margin?': p.isBestMargin ? 'Yes' : 'No',
     }));
     
@@ -105,7 +105,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         { wch: 15 }, // Margin %
         { wch: 15 }, // Margin Loss
         { wch: 18 }, // Is Margin Outlier?
-        { wch: 18 }, // Is Value Outlier?
+        { wch: 18 }, // Is Quantity Outlier?
         { wch: 15 }, // Is Best Margin?
     ];
     
@@ -121,7 +121,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
     const period = searchParams.get('period');
-    const vof = searchParams.get('vof');
+    const qof = searchParams.get('qof');
 
     const params = new URLSearchParams();
     if(scope) params.set('scope', scope);
@@ -129,7 +129,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     if(city) params.set('city', city);
     if(cityState) params.set('cityState', cityState);
     if(period) params.set('period', period);
-    if(vof) params.set('vof', vof);
+    if(qof) params.set('qof', qof);
     
     const queryString = params.toString();
 
