@@ -35,11 +35,11 @@ export default function ProductPurchasesTable({ purchases }: ProductPurchasesTab
         <TableBody>
             {purchases.map((p) => (
             <TableRow key={p.id} className={cn(
-                p.isBestMargin && !p.isMarginOutlier && "bg-primary/20",
+                p.isBestMargin && !p.isMarginOutlier && !p.isValueOutlier && "bg-primary/20",
                 (p.isMarginOutlier || p.isValueOutlier) && "bg-destructive/10 text-muted-foreground"
             )}>
                 <TableCell>
-                    <Link href={`/vendors/${p.vendorId}`} className="font-medium hover:underline">
+                    <Link href={`/vendors/${p.vendorId}?${new URLSearchParams(window.location.search)}`} className="font-medium hover:underline">
                         {p.vendor.name}
                     </Link>
                     {p.isBestMargin && !p.isMarginOutlier && !p.isValueOutlier && <Badge variant="outline" className="ml-2 border-primary text-primary">Best Margin</Badge>}

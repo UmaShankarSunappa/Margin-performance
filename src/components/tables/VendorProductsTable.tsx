@@ -34,7 +34,7 @@ export default function VendorProductsTable({ products }: VendorProductsTablePro
               return (
                   <TableRow key={p.productId}>
                       <TableCell>
-                          <Link href={`/products/${p.productId}`} className="font-medium hover:underline">
+                          <Link href={`/products/${p.productId}?${new URLSearchParams(window.location.search)}`} className="font-medium hover:underline">
                           {p.productName}
                           </Link>
                       </TableCell>
