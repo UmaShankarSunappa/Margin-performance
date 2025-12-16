@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { DollarSign, Package, TrendingDown, Users, MapPin, Calendar, Filter, Factory, Building, Tag } from "lucide-react";
 import Header from "@/components/Header";
-import { getHomePageData, getFinancialYearMonths, getFilterOptions } from "@/lib/data";
+import { getHomePageData, getFinancialYearMonths, getFilterOptions, manufacturersAndDivisions } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 import KpiCard from "@/components/dashboard/KPI";
 import ProductMarginLossChart from "@/components/charts/ProductMarginLossChart";
@@ -22,8 +22,8 @@ import type { HomePageData, QuantityOutlierFilter, DataFilters } from "@/lib/typ
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
-import { format, parse } from "date-fns";
 import { Button } from "@/components/ui/button";
+import MultiSelectFilter from "@/components/dashboard/MultiSelectFilter";
 
 type Scope = 'pan-india' | 'state' | 'city';
 type Period = 'mtd' | string; // 'mtd' or 'YYYY-MM'
@@ -37,23 +37,33 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  const { manufacturers, divisions, vendors } = useMemo(() => getFilterOptions(), []);
+  const { allManufacturers, allDivisions, allVendors } = useMemo(() => getFilterOptions(), []);
   const productTypes = ['Private Label', 'Non-Private Label'];
-
-  // State initialization from URL or defaults
-  const [scope, setScope] = useState<Scope>(() => (searchParams.get('scope') as Scope) || 'pan-india');
-  const [selectedState, setSelectedState] = useState<string>(() => searchParams.get('state') || 'Telangana');
-  const [selectedCityState, setSelectedCityState] = useState<string>(() => searchParams.get('cityState') || 'Telangana');
-  const [selectedCity, setSelectedCity] = useState<string>(() => searchParams.get('city') || 'Hyderabad');
-  const [period, setPeriod] = useState<Period>(() => searchParams.get('period') || 'mtd');
-  const [quantityOutlierFilter, setQuantityOutlierFilter] = useState<QuantityOutlierFilter>(() => (searchParams.get('qof') as QuantityOutlierFilter) || 'none');
-
-  const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all');
-  const [selectedDivision, setSelectedDivision] = useState<string>('all');
-  const [selectedVendor, setSelectedVendor] = useState<string>('all');
+  
+  const [scope, setScope] = useState<Scope>('pan-india');
+  const [selectedState, setSelectedState] = useState<string>('Telangana');
+  const [selectedCityState, setSelectedCityState] = useState<string>('Telangana');
+  const [selectedCity, setSelectedCity] = useState<string>('Hyderabad');
+  const [period, setPeriod] = useState<Period>('mtd');
+  const [quantityOutlierFilter, setQuantityOutlierFilter] = useState<QuantityOutlierFilter>('none');
   const [selectedProductType, setSelectedProductType] = useState<string>('all');
+  const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>(allManufacturers);
+  const [selectedDivisions, setSelectedDivisions] = useState<string[]>(allDivisions);
+  const [selectedVendor, setSelectedVendor] = useState<string>('all');
 
   const financialYearMonths = useMemo(() => getFinancialYearMonths(), []);
+
+  const availableDivisions = useMemo(() => {
+    if (selectedManufacturers.length === 0 || selectedManufacturers.length === allManufacturers.length) {
+      return allDivisions;
+    }
+    const divisions = selectedManufacturers.flatMap(m => manufacturersAndDivisions[m] || []);
+    return [...new Set(divisions)];
+  }, [selectedManufacturers, allManufacturers, allDivisions]);
+  
+  useEffect(() => {
+    setSelectedDivisions(prevSelected => prevSelected.filter(d => availableDivisions.includes(d)));
+  }, [availableDivisions]);
 
   const updateUrlParams = useCallback(() => {
     const params = new URLSearchParams();
@@ -65,13 +75,19 @@ export default function Home() {
     }
     params.set('period', period);
     params.set('qof', quantityOutlierFilter);
-    if (selectedManufacturer !== 'all') params.set('manufacturer', selectedManufacturer);
-    if (selectedDivision !== 'all') params.set('division', selectedDivision);
-    if (selectedVendor !== 'all') params.set('vendor', selectedVendor);
     if (selectedProductType !== 'all') params.set('productType', selectedProductType);
     
+    if (selectedManufacturers.length > 0 && selectedManufacturers.length < allManufacturers.length) {
+      params.set('manufacturer', selectedManufacturers.join(','));
+    }
+    if (selectedDivisions.length > 0 && selectedDivisions.length < allDivisions.length) {
+      params.set('division', selectedDivisions.join(','));
+    }
+    
+    if (selectedVendor !== 'all') params.set('vendor', selectedVendor);
+    
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedManufacturer, selectedDivision, selectedVendor, selectedProductType, router, pathname]);
+  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedProductType, selectedManufacturers, selectedDivisions, selectedVendor, router, pathname, allManufacturers.length, allDivisions.length]);
 
   useEffect(() => {
     const s = searchParams.get('scope') as Scope || 'pan-india';
@@ -80,10 +96,10 @@ export default function Home() {
     const cs = searchParams.get('cityState') || 'Telangana';
     const p = searchParams.get('period') || 'mtd';
     const qof = searchParams.get('qof') as QuantityOutlierFilter || 'none';
-    const man = searchParams.get('manufacturer') || 'all';
-    const div = searchParams.get('division') || 'all';
-    const ven = searchParams.get('vendor') || 'all';
     const pt = searchParams.get('productType') || 'all';
+    const man = searchParams.get('manufacturer');
+    const div = searchParams.get('division');
+    const ven = searchParams.get('vendor') || 'all';
 
     setScope(s);
     setSelectedState(st);
@@ -91,12 +107,12 @@ export default function Home() {
     setSelectedCityState(cs);
     setPeriod(p);
     setQuantityOutlierFilter(qof);
-    setSelectedManufacturer(man);
-    setSelectedDivision(div);
-    setSelectedVendor(ven);
     setSelectedProductType(pt);
+    setSelectedManufacturers(man ? man.split(',') : allManufacturers);
+    setSelectedDivisions(div ? div.split(',') : allDivisions);
+    setSelectedVendor(ven);
 
-  }, [searchParams]);
+  }, [searchParams, allManufacturers, allDivisions]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -111,8 +127,8 @@ export default function Home() {
       
       const filters: DataFilters = {
           geo,
-          manufacturer: selectedManufacturer,
-          division: selectedDivision,
+          manufacturer: selectedManufacturers,
+          division: selectedDivisions,
           vendor: selectedVendor,
           productType: selectedProductType,
       }
@@ -129,7 +145,7 @@ export default function Home() {
     };
 
     fetchData();
-  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedManufacturer, selectedDivision, selectedVendor, selectedProductType]);
+  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedProductType, selectedManufacturers, selectedDivisions, selectedVendor]);
   
   useEffect(() => {
       updateUrlParams();
@@ -289,25 +305,25 @@ export default function Home() {
                      {/* Advanced Filters */}
                     {showAdvancedFilters && (
                          <div className="flex flex-wrap items-center gap-2 pt-2">
-                             <Select onValueChange={setSelectedManufacturer} value={selectedManufacturer}>
-                                <PillSelectTrigger placeholder="Manufacturer"><Factory className="mr-2" /></PillSelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Manufacturers</SelectItem>
-                                    {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Select onValueChange={setSelectedDivision} value={selectedDivision}>
-                                <PillSelectTrigger placeholder="Division"><Building className="mr-2" /></PillSelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Divisions</SelectItem>
-                                    {divisions.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                             <MultiSelectFilter
+                                icon={Factory}
+                                title="Manufacturer"
+                                options={allManufacturers}
+                                selectedValues={selectedManufacturers}
+                                onSelectedChange={setSelectedManufacturers}
+                             />
+                            <MultiSelectFilter
+                                icon={Building}
+                                title="Division"
+                                options={availableDivisions}
+                                selectedValues={selectedDivisions}
+                                onSelectedChange={setSelectedDivisions}
+                             />
                             <Select onValueChange={setSelectedVendor} value={selectedVendor}>
                                 <PillSelectTrigger placeholder="Vendor"><Users className="mr-2" /></PillSelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Vendors</SelectItem>
-                                    {vendors.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                                    {allVendors.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                            
@@ -387,7 +403,3 @@ export default function Home() {
     </>
   );
 }
-
-    
-
-    

@@ -2,6 +2,7 @@
 
 
 
+
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, DataFilters, PurchaseWithMargin } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, getMonth, parse } from 'date-fns';
 
@@ -47,6 +48,15 @@ export const geoLocations = {
     } as Record<string, string[]>
 };
 
+export const manufacturersAndDivisions: Record<string, string[]> = {
+    "Sun Pharma": ["Consumer Healthcare", "Specialty Generic"],
+    "Cipla": ["Respiratory", "Urology", "Cardiology"],
+    "Dr. Reddy's": ["Pharmaceutical Services", "Generic Formulations"],
+    "Lupin": ["Anti-Infective", "Diabetes"],
+    "Zydus Cadila": ["Wellness", "Animal Health"],
+    "Glenmark": ["Glenmark Consumer Care", "Sanitary Hygine"],
+};
+
 // Function to generate a larger dataset
 function generateData() {
   const products: Product[] = [];
@@ -58,15 +68,7 @@ function generateData() {
   const vendorCount = 66;
   const purchasesPerProduct = 20;
   
-   const manufacturers = {
-    "Sun Pharma": ["Consumer Healthcare", "Specialty Generic"],
-    "Cipla": ["Respiratory", "Urology", "Cardiology"],
-    "Dr. Reddy's": ["Pharmaceutical Services", "Generic Formulations"],
-    "Lupin": ["Anti-Infective", "Diabetes"],
-    "Zydus Cadila": ["Wellness", "Animal Health"],
-    "Glenmark": ["Glenmark Consumer Care", "Sanitary Hygine"],
-  };
-  const manufacturerNames = Object.keys(manufacturers);
+  const manufacturerNames = Object.keys(manufacturersAndDivisions);
 
 
   // Generate Products
@@ -99,7 +101,7 @@ function generateData() {
         productName = `${productName} #${Math.floor(i / pharmaNames.length) + 1}`;
     }
     const manufacturer = manufacturerNames[i % manufacturerNames.length];
-    const divisions = manufacturers[manufacturer as keyof typeof manufacturers];
+    const divisions = manufacturersAndDivisions[manufacturer as keyof typeof manufacturersAndDivisions];
     const division = divisions[i % divisions.length];
 
     products.push({
@@ -185,10 +187,10 @@ function generateData() {
 const fullDataset = generateData();
 
 export function getFilterOptions() {
-    const manufacturers = [...new Set(fullDataset.products.map(p => p.manufacturer))];
-    const divisions = [...new Set(fullDataset.products.map(p => p.division))];
-    const vendors = [...new Set(fullDataset.vendors.map(v => v.name))];
-    return { manufacturers, divisions, vendors };
+    const allManufacturers = [...new Set(fullDataset.products.map(p => p.manufacturer))].sort();
+    const allDivisions = [...new Set(fullDataset.products.map(p => p.division))].sort();
+    const allVendors = [...new Set(fullDataset.vendors.map(v => v.name))].sort();
+    return { allManufacturers, allDivisions, allVendors };
 }
 
 
@@ -217,6 +219,7 @@ export async function getAppData(
 ): Promise<AppData> {
   const allPurchasesWithMargin = fullDataset.purchasesWithMargin;
   const allProducts = fullDataset.products;
+  const { allManufacturers, allDivisions } = getFilterOptions();
   
   const now = new Date(2025, 11, 15); // Simulate "today" as Dec 15, 2025
   let endDate: Date;
@@ -250,16 +253,22 @@ export async function getAppData(
         return product && product.productType === filters.productType;
     });
   }
-  if (filters.manufacturer && filters.manufacturer !== 'all') {
+
+  // Handle multi-select for manufacturer
+  if (Array.isArray(filters.manufacturer) && filters.manufacturer.length > 0 && filters.manufacturer.length < allManufacturers.length) {
+      const manufacturerSet = new Set(filters.manufacturer);
       attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
         const product = productMap.get(p.productId);
-        return product && product.manufacturer === filters.manufacturer;
+        return product && manufacturerSet.has(product.manufacturer);
       });
   }
-  if (filters.division && filters.division !== 'all') {
+  
+  // Handle multi-select for division
+  if (Array.isArray(filters.division) && filters.division.length > 0 && filters.division.length < allDivisions.length) {
+      const divisionSet = new Set(filters.division);
       attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
         const product = productMap.get(p.productId);
-        return product && product.division === filters.division;
+        return product && divisionSet.has(product.division);
       });
   }
   
