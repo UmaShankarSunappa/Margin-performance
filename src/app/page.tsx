@@ -155,6 +155,10 @@ export default function Home() {
   
   const getMarginAnalysisLink = () => {
     const queryString = searchParams.toString();
+    const vendorId = data?.analysisData.vendors[0]?.id;
+    if (selectedVendor !== 'all' && vendorId) {
+      return `/vendors/${vendorId}?${queryString}`;
+    }
     return `/margin-analysis${queryString ? `?${queryString}` : ''}`;
   }
   
@@ -330,8 +334,8 @@ export default function Home() {
         </div>
         
         {/* KPIs for last 4 months */}
-        <div>
-            <div className="flex items-center gap-4 my-4">
+        <div className="mt-4">
+            <div className="flex items-center gap-4 mb-4">
                 <Separator />
                 <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getAnalysisPeriodTitle()}</h2>
                 <Separator />
@@ -367,7 +371,7 @@ export default function Home() {
         </div>
 
 
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-4">
             <Card>
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (Value)</CardTitle>
@@ -406,3 +410,5 @@ export default function Home() {
     </>
   );
 }
+
+    
