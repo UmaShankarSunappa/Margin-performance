@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin, Calendar, Filter, ChevronsUpDown, Factory, Building, Tag, Users } from "lucide-react";
+import { DollarSign, Package, TrendingDown, Users, MapPin, Calendar, Filter, Factory, Building, Tag } from "lucide-react";
 import Header from "@/components/Header";
 import { getHomePageData, getFinancialYearMonths, getFilterOptions } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
@@ -22,7 +22,6 @@ import type { HomePageData, QuantityOutlierFilter, DataFilters } from "@/lib/typ
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
-import { Separator } from "@/components/ui/separator";
 import { format, parse } from "date-fns";
 import { Button } from "@/components/ui/button";
 
@@ -159,21 +158,9 @@ export default function Home() {
     if (selectedVendor !== 'all' && vendorId) {
       return `/vendors/${vendorId}?${queryString}`;
     }
-    return `/margin-analysis${queryString ? `?${queryString}` : ''}`;
+    return `/margin-analysis?${queryString}`;
   }
   
-  const getAnalysisPeriodTitle = () => {
-      if (period === 'mtd') {
-        return `Current Month Analysis`;
-      }
-      try {
-          const date = parse(period, 'yyyy-MM', new Date());
-          return `Analysis for ${format(date, 'MMMM yyyy')}`;
-      } catch(e) {
-        return 'Selected Period Analysis';
-      }
-  };
-
   if (isLoading || !data) {
     return (
         <div className="flex min-h-screen w-full flex-col">
@@ -211,16 +198,12 @@ export default function Home() {
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-4 md:p-8">
         <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                    <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
-                </div>
-            </div>
+            <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
             
             <Card>
                 <CardContent className="p-4 flex flex-col gap-4">
                     {/* Top Row Filters */}
-                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Select onValueChange={(value: Period) => setPeriod(value)} value={period}>
                             <PillSelectTrigger placeholder="Select Period">
                                 <Calendar className="mr-2" />
@@ -294,7 +277,7 @@ export default function Home() {
 
                      {/* Advanced Filters */}
                     {showAdvancedFilters && (
-                         <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+                         <div className="flex flex-wrap items-center gap-2 pt-2">
                              <Select onValueChange={setSelectedManufacturer} value={selectedManufacturer}>
                                 <PillSelectTrigger placeholder="Manufacturer"><Factory className="mr-2" /></PillSelectTrigger>
                                 <SelectContent>
@@ -310,7 +293,7 @@ export default function Home() {
                                 </SelectContent>
                             </Select>
                             <Select onValueChange={setSelectedVendor} value={selectedVendor}>
-                                <PillSelectTrigger placeholder="Vendor"><Truck className="mr-2" /></PillSelectTrigger>
+                                <PillSelectTrigger placeholder="Vendor"><Users className="mr-2" /></PillSelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Vendors</SelectItem>
                                     {vendors.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
@@ -333,45 +316,38 @@ export default function Home() {
             </Card>
         </div>
         
-        {/* KPIs for last 4 months */}
-        <div className="mt-4">
-            <div className="flex items-center gap-4 mb-4">
-                <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getAnalysisPeriodTitle()}</h2>
-                <Separator />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <KpiCard
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <KpiCard
                 title="YTD Total Margin Loss"
                 value={formatCurrency(ytdTotalMarginLoss)}
                 description="Financial year-to-date margin loss"
                 icon={DollarSign}
-              />
-              <Link href={getMarginAnalysisLink()} className="block">
-                  <KpiCard
+            />
+            <Link href={getMarginAnalysisLink()} className="block">
+                <KpiCard
                     title="Total Margin Loss"
                     value={formatCurrency(analysisData.totalMarginLoss)}
                     description="Cumulative loss for selected period"
-                    icon={DollarSign}
+                    icon={TrendingDown}
+                    className="hover:border-primary hover:shadow-lg"
                   />
-              </Link>
-              <KpiCard
-                title="Total SKU's"
-                value={analysisData.products.length.toString()}
-                description="Total unique products with purchases"
-                icon={Package}
-              />
-               <KpiCard
-                title="Total Vendors"
-                value={analysisData.vendors.length.toString()}
-                description="Total unique vendors with purchases"
-                icon={Truck}
-              />
-            </div>
+            </Link>
+          <KpiCard
+            title="Total SKU's with Margin Loss"
+            value={analysisData.productsSummary.filter(p => p.totalMarginLoss > 0).length.toString()}
+            description="Unique products with margin loss"
+            icon={Package}
+          />
+           <KpiCard
+            title="Total Vendors with Margin Loss"
+            value={analysisData.vendorsSummary.filter(v => v.totalMarginLoss > 0).length.toString()}
+            description="Unique vendors with margin loss"
+            icon={Users}
+          />
         </div>
 
 
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-4">
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (Value)</CardTitle>

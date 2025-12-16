@@ -1,5 +1,6 @@
 
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, DataFilters } from "@/lib/types";
+
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, DataFilters, PurchaseWithMargin } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth, parse } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -49,6 +50,7 @@ function generateData() {
   const products: Product[] = [];
   const vendors: Vendor[] = [];
   const purchases: Purchase[] = [];
+  const purchasesWithMargin: PurchaseWithMargin[] = [];
 
   const productCount = 150;
   const vendorCount = 66;
@@ -117,7 +119,6 @@ function generateData() {
   }
 
   let purchaseIdCounter = 1;
-  const currentSimulatedDate = new Date(2025, 11, 15); // December 15, 2025
 
   // Months with data: Dec, Nov, Oct, Sep (2025)
   const monthsWithData = [11, 10, 9, 8]; 
@@ -156,7 +157,7 @@ function generateData() {
         const citiesInState = geoLocations.citiesByState[state];
         const city = citiesInState[Math.floor(Math.random() * citiesInState.length)];
 
-        purchases.push({
+        const purchase: Purchase = {
             id: `pur-${purchaseIdCounter++}`,
             invoiceNumber: `INV-${Math.floor(Math.random() * 1000000) + 1}`,
             mrp: product.sellingPrice,
@@ -167,11 +168,15 @@ function generateData() {
             purchasePrice: parseFloat(purchasePrice.toFixed(2)),
             state,
             city
-        });
+        };
+        purchases.push(purchase);
+        
+        const margin = ((product.sellingPrice - purchase.purchasePrice) / product.sellingPrice) * 100;
+        purchasesWithMargin.push({ ...purchase, margin });
     }
   });
 
-  return { products, vendors, purchases };
+  return { products, vendors, purchases, purchasesWithMargin };
 }
 
 // Store the full dataset in memory
@@ -208,7 +213,7 @@ export async function getAppData(
     filters: DataFilters,
     options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string | { start: Date, end: Date }, quantityOutlierFilter?: QuantityOutlierFilter } = {}
 ): Promise<AppData> {
-  const allPurchases = fullDataset.purchases;
+  const allPurchasesWithMargin = fullDataset.purchasesWithMargin;
   const allProducts = fullDataset.products;
   
   const now = new Date(2025, 11, 15); // Simulate "today" as Dec 15, 2025
@@ -228,7 +233,7 @@ export async function getAppData(
       startDate = startOfMonth(subMonths(selectedMonthDate, 3));
   }
 
-  const timeFilteredPurchases = allPurchases.filter(p => {
+  const timeFilteredPurchases = allPurchasesWithMargin.filter(p => {
       const purchaseDate = parseISO(p.date);
       return purchaseDate >= startDate && purchaseDate <= endDate;
   });
@@ -281,13 +286,6 @@ export async function getAppData(
   const products = allProducts.filter(p => productIdsInScope.has(p.id));
   const vendors = fullDataset.vendors.filter(v => vendorIdsInScope.has(v.id));
   
-  // Calculate margins for all purchases globally first to establish benchmarks
-  const allPurchasesWithMargin = allPurchases.map(purchase => {
-    const product = productMap.get(purchase.productId)!;
-    const margin = ((product.sellingPrice - purchase.purchasePrice) / product.sellingPrice) * 100;
-    return { ...purchase, margin };
-  });
-  
   // Quantity-based outlier filtering
   let quantityFilteredPurchases = filteredPurchases;
   if (options.quantityOutlierFilter && options.quantityOutlierFilter !== 'none') {
@@ -321,10 +319,6 @@ export async function getAppData(
       const outlierThreshold = multiplier * modeMargin;
       
       const nonOutlierPurchases = quantityFilteredPurchases
-        .map(p => {
-            const fullPurchase = allPurchasesWithMargin.find(pwm => pwm.id === p.id)!;
-            return { ...fullPurchase, isQuantityOutlier: p.isQuantityOutlier };
-        })
         .filter(p => p.productId === product.id && p.margin < outlierThreshold && !p.isQuantityOutlier);
       
       let bestMargin = 0;
@@ -351,8 +345,7 @@ export async function getAppData(
     const product = productMap.get(p.productId)!;
     const vendor = vendorMap.get(p.vendorId)!;
     const benchmark = productBenchmarks.get(p.productId);
-    const purchaseWithMargin = allPurchasesWithMargin.find(pwm => pwm.id === p.id)!;
-    const margin = purchaseWithMargin.margin;
+    const margin = p.margin;
 
     if (!benchmark) {
         return { ...p, margin, product, vendor, marginLoss: 0, isBestMargin: false, isMarginOutlier: false, isQuantityOutlier: p.isQuantityOutlier, benchmarkMargin: margin, modeMargin: 0 };
@@ -599,19 +592,20 @@ export async function getHomePageData(
     quantityOutlierFilter: QuantityOutlierFilter
 ): Promise<HomePageData> {
     
-    const analysisData = await getAppData(dataFilters, { period, quantityOutlierFilter });
-    
     const today = new Date(2025, 11, 15);
     const currentYear = getYear(today);
-    const currentMonth = getMonth(today); // 0-11
-    
+    const currentMonth = getMonth(today);
     const fyStartYear = currentMonth < 3 ? currentYear - 1 : currentYear;
     const ytdStartDate = new Date(fyStartYear, 3, 1);
-    
-    const ytdData = await getAppData(dataFilters, { 
-        period: { start: ytdStartDate, end: today }, 
-        quantityOutlierFilter 
-    });
+
+    const periodOptions = { period, quantityOutlierFilter };
+    const ytdOptions = { period: { start: ytdStartDate, end: today }, quantityOutlierFilter };
+
+    // Fetch and process data for the main selected period
+    const analysisData = await getAppData(dataFilters, periodOptions);
+
+    // Fetch and process data for YTD
+    const ytdData = await getAppData(dataFilters, ytdOptions);
 
     return {
         analysisData,

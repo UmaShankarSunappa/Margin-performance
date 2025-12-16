@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   name: string;
@@ -25,10 +26,13 @@ export interface Purchase {
   mrp: number;
 }
 
-export interface ProcessedPurchase extends Purchase {
+export interface PurchaseWithMargin extends Purchase {
+  margin: number;
+}
+
+export interface ProcessedPurchase extends PurchaseWithMargin {
   product: Product;
   vendor: Vendor;
-  margin: number;
   marginLoss: number;
   isBestMargin: boolean;
   isMarginOutlier: boolean;
@@ -119,3 +123,5 @@ export interface DataFilters {
     vendor: string;
     productType: string;
 }
+
+    
