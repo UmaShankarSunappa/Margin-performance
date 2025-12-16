@@ -132,7 +132,9 @@ function generateData() {
         const city = citiesInState[Math.floor(Math.random() * citiesInState.length)];
 
         purchases.push({
-            id: `p-${purchaseIdCounter++}`,
+            id: `pur-${purchaseIdCounter++}`,
+            invoiceNumber: `INV-${Math.floor(Math.random() * 1000000) + 1}`,
+            mrp: product.sellingPrice,
             productId: product.id,
             vendorId: vendor.id,
             date,

@@ -18,6 +18,8 @@ export interface Purchase {
   purchasePrice: number;
   state: string;
   city: string;
+  invoiceNumber: string;
+  mrp: number;
 }
 
 export interface ProcessedPurchase extends Purchase {

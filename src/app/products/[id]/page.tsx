@@ -78,17 +78,19 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     if (!details) return;
 
     const dataToExport = details.purchases.map(p => ({
-        'Purchase ID': p.id,
+        'Purchase Number': p.id,
+        'Invoice Number': p.invoiceNumber,
         'Vendor Name': p.vendor.name,
-        'Vendor ID': p.vendorId,
-        'Date': format(new Date(p.date), 'dd MMM yyyy'),
+        'Invoice Date': format(new Date(p.date), 'dd MMM yyyy'),
         'Quantity': p.quantity,
+        'MRP': p.mrp,
         'Cost Price': p.purchasePrice,
         'Margin %': p.margin,
         'Margin Loss': p.isMarginOutlier ? 'N/A' : p.marginLoss,
         'Is Margin Outlier?': p.isMarginOutlier ? 'Yes' : 'No',
         'Is Quantity Outlier?': p.isQuantityOutlier ? 'Yes' : 'No',
         'Is Best Margin?': p.isBestMargin ? 'Yes' : 'No',
+        'Location': `${p.city}, ${p.state}`
     }));
     
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -97,17 +99,19 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     
     // Set column widths
     worksheet['!cols'] = [
-        { wch: 15 }, // Purchase ID
+        { wch: 15 }, // Purchase Number
+        { wch: 15 }, // Invoice Number
         { wch: 25 }, // Vendor Name
-        { wch: 15 }, // Vendor ID
-        { wch: 15 }, // Date
+        { wch: 15 }, // Invoice Date
         { wch: 10 }, // Quantity
+        { wch: 15 }, // MRP
         { wch: 15 }, // Cost Price
         { wch: 15 }, // Margin %
         { wch: 15 }, // Margin Loss
         { wch: 18 }, // Is Margin Outlier?
         { wch: 18 }, // Is Quantity Outlier?
         { wch: 15 }, // Is Best Margin?
+        { wch: 25 }, // Location
     ];
     
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
