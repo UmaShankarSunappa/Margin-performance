@@ -234,7 +234,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 </div>
             )}
             {summary && (
-                <div className="mt-6">
+                <div className="mt-4">
                     <div className="flex items-center gap-4 mb-4">
                         <Separator />
                         <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false)}</h2>
@@ -258,7 +258,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
         {/* Pan-India KPI Section - Only shows when toggled */}
         {showPanIndia && (
-          <div className="mt-8">
+          <div className="mt-4">
             {panIndiaMonthlySummary && (
                 <div>
                     <div className="flex items-center gap-4 mb-4">
@@ -275,7 +275,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 </div>
             )}
             {panIndiaSummary && (
-                <div className="mt-6">
+                <div className="mt-4">
                     <div className="flex items-center gap-4 mb-4">
                         <Separator />
                         <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false, true)}</h2>
