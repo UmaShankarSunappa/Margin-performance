@@ -13,13 +13,13 @@ import { format, parse, subMonths, startOfMonth } from 'date-fns';
 
 
 import Header from "@/components/Header";
-import { getProductDetails } from "@/lib/data";
+import { getProductDetails, getRawPurchasesForProduct } from "@/lib/data";
 import ProductPriceTrendChart from "@/components/charts/ProductPriceTrendChart";
 import ProductMarginTrendChart from "@/components/charts/ProductMarginTrendChart";
 import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, QuantityOutlierFilter, ProductMonthlySummary, DataFilters } from "@/lib/types";
+import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, QuantityOutlierFilter, ProductMonthlySummary, DataFilters, Purchase } from "@/lib/types";
 import { useEffect, useState, useMemo } from "react";
 import Loading from "@/app/loading";
 import { MultiplierAdjustmentDialog } from "@/components/dialogs/MultiplierAdjustmentDialog";
@@ -128,6 +128,27 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
     const filename = `${details.product.name.replace(/ /g, '_')}_purchase_history.xlsx`;
+    saveAs(data, filename);
+  };
+
+  const handleDownloadPurchaseDump = async () => {
+    if (!details) return;
+    
+    const rawPurchases = await getRawPurchasesForProduct(params.id);
+
+    const worksheet = XLSX.utils.json_to_sheet(rawPurchases);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Raw Purchase Dump');
+    
+    worksheet['!cols'] = [
+        { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+        { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, 
+        { wch: 15 }, { wch: 15 } 
+    ];
+    
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    const filename = `${details.product.name.replace(/ /g, '_')}_purchase_dump.xlsx`;
     saveAs(data, filename);
   };
 
@@ -350,6 +371,10 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                      <Button variant="outline" onClick={handleDownloadHistory} disabled={!showHistory || purchases.length === 0}>
                         <FileDown className="mr-2" />
                         Download Excel
+                    </Button>
+                    <Button variant="outline" onClick={handleDownloadPurchaseDump} disabled={!details}>
+                        <FileDown className="mr-2" />
+                        Download Purchase Dump
                     </Button>
                 </div>
             </CardHeader>

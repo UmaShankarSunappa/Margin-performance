@@ -1,6 +1,7 @@
 
 
 
+
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, DataFilters, PurchaseWithMargin } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, getMonth, parse } from 'date-fns';
 
@@ -439,6 +440,10 @@ export async function getAppData(
     vendors,
     marginAnalysisSummary,
   };
+}
+
+export async function getRawPurchasesForProduct(productId: string): Promise<Purchase[]> {
+    return fullDataset.purchases.filter(p => p.productId === productId);
 }
 
 
