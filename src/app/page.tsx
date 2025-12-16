@@ -197,7 +197,7 @@ export default function Home() {
     <>
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-4 md:p-8">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
             
             <Card>
@@ -268,6 +268,17 @@ export default function Home() {
                             <SelectItem value="5percent">Exclude &lt; 5% Qty</SelectItem>
                           </SelectContent>
                         </Select>
+                         <Select onValueChange={setSelectedProductType} value={selectedProductType}>
+                            <PillSelectTrigger placeholder="Product Type">
+                                <Tag className="mr-2" />
+                            </PillSelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Product Types</SelectItem>
+                                {productTypes.map(pt => (
+                                    <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
 
                         <div className="flex-grow"></div>
                         <Button variant="outline" size="sm" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
@@ -299,24 +310,14 @@ export default function Home() {
                                     {vendors.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select onValueChange={setSelectedProductType} value={selectedProductType}>
-                                <PillSelectTrigger placeholder="Product Type">
-                                    <Tag className="mr-2" />
-                                </PillSelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Product Types</SelectItem>
-                                    {productTypes.map(pt => (
-                                        <SelectItem key={pt} value={pt}>{pt}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                           
                          </div>
                     )}
                 </CardContent>
             </Card>
         </div>
         
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
             <KpiCard
                 title="YTD Total Margin Loss"
                 value={formatCurrency(ytdTotalMarginLoss)}
@@ -347,7 +348,7 @@ export default function Home() {
         </div>
 
 
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+        <div className="grid gap-2 md:gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (Value)</CardTitle>
@@ -386,5 +387,7 @@ export default function Home() {
     </>
   );
 }
+
+    
 
     
