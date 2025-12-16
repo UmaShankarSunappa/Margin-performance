@@ -1,4 +1,5 @@
 
+
 export interface Product {
   id: string;
   name: string;
@@ -44,6 +45,7 @@ export interface ProcessedPurchase extends PurchaseWithMargin {
 export interface ProductSummary {
   id: string;
   name: string;
+  manufacturer: string;
   totalMarginLoss: number;
   purchaseCount: number;
   averageMargin: number;
@@ -123,5 +125,4 @@ export interface DataFilters {
     vendor: string;
     productType: string;
 }
-
     

@@ -1,7 +1,8 @@
 
 
+
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, DataFilters, PurchaseWithMargin } from "@/lib/types";
-import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth, parse } from 'date-fns';
+import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, getMonth, parse } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
 function getMode(arr: number[]): number | undefined {
@@ -387,6 +388,7 @@ export async function getAppData(
     return {
       id: product.id,
       name: product.name,
+      manufacturer: product.manufacturer,
       sellingPrice: product.sellingPrice,
       totalMarginLoss,
       purchaseCount: nonOutlierPurchases.length,
@@ -601,16 +603,13 @@ export async function getHomePageData(
     const periodOptions = { period, quantityOutlierFilter };
     const ytdOptions = { period: { start: ytdStartDate, end: today }, quantityOutlierFilter };
 
-    // Fetch and process data for the main selected period
-    const analysisData = await getAppData(dataFilters, periodOptions);
-
-    // Fetch and process data for YTD
-    const ytdData = await getAppData(dataFilters, ytdOptions);
+    const [analysisData, ytdData] = await Promise.all([
+        getAppData(dataFilters, periodOptions),
+        getAppData(dataFilters, ytdOptions)
+    ]);
 
     return {
         analysisData,
         ytdTotalMarginLoss: ytdData.totalMarginLoss,
     };
 }
-
-    

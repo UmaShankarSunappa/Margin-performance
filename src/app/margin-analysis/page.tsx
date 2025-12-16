@@ -110,6 +110,7 @@ function MarginAnalysisContent() {
         const dataToExport = filteredSummary.map(p => ({
             'Product ID': p.id,
             'Product Name': p.name,
+            'Manufacturer': p.manufacturer,
             'Total Margin Loss': p.totalMarginLoss,
             'Margin Loss %': p.marginLossPercentage,
             'Total Purchases': p.purchaseCount,
@@ -130,6 +131,7 @@ function MarginAnalysisContent() {
         const colWidths = [
             { wch: 20 }, // Product ID
             { wch: 30 }, // Product Name
+            { wch: 25 }, // Manufacturer
             { wch: 20 }, // Total Margin Loss
             { wch: 15 }, // Margin Loss %
             { wch: 15 }, // Total Purchases
@@ -214,14 +216,21 @@ function MarginAnalysisContent() {
                                           columnId="id"
                                           options={getColumnOptions('id')}
                                           onFilterChange={handleFilterChange}
-                                          className="w-[150px] text-center"
+                                          className="text-center"
                                         />
                                         <DataTableColumnHeader
                                           title="Product Name"
                                           columnId="name"
                                           options={getColumnOptions('name')}
                                           onFilterChange={handleFilterChange}
-                                          className="w-[300px] text-center"
+                                          className="text-center"
+                                        />
+                                        <DataTableColumnHeader
+                                          title="Manufacturer"
+                                          columnId="manufacturer"
+                                          options={getColumnOptions('manufacturer')}
+                                          onFilterChange={handleFilterChange}
+                                          className="text-center"
                                         />
                                         <DataTableColumnHeader
                                           title="Total Margin Loss"
@@ -256,6 +265,7 @@ function MarginAnalysisContent() {
                                         >
                                             <TableCell className="text-center">{product.id}</TableCell>
                                             <TableCell className="font-semibold text-center">{product.name}</TableCell>
+                                            <TableCell className="text-center">{product.manufacturer}</TableCell>
                                             <TableCell className={cn("text-center font-semibold", product.totalMarginLoss > 0 && "text-destructive")}>
                                                 {formatCurrency(product.totalMarginLoss)}
                                             </TableCell>
