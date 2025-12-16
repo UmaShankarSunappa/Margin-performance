@@ -148,55 +148,41 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { product, purchases, summary, panIndiaSummary, monthlySummary, panIndiaMonthlySummary, monthlyAverages } = details;
   
   const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
-  
-  // Decide which summary to display based on the toggle
-  const displaySummary = showPanIndia ? panIndiaSummary : summary;
-  const displayMonthlySummary = showPanIndia ? details.panIndiaMonthlySummary : monthlySummary;
 
+  const getKpiTitle = (monthly: boolean = false, isPanIndia: boolean = false) => {
+    let title: string;
 
-  const getFormattedPeriod = () => {
-      if (!period) return '';
-      if (period === 'mtd') return `Analysis for Current Month`;
-      try {
-          const date = parse(period, 'yyyy-MM', new Date());
-          return `Analysis for ${format(date, 'MMMM yyyy')}`;
-      } catch (e) {
-          return '';
-      }
-  };
-  
-  const getKpiTitle = (monthly: boolean = false) => {
-    let title = 'Historical Analysis (Current Month + Last 3 Months)';
-    if(monthly) {
+    if (monthly) {
         if (period === 'mtd') {
-            title = `Analysis for Current Month`;
+            title = 'Analysis for Current Month';
         } else {
             try {
                 const date = parse(period, 'yyyy-MM', new Date());
                 title = `Analysis for ${format(date, 'MMMM yyyy')}`;
-            } catch(e) {}
+            } catch(e) {
+                title = 'Monthly Analysis';
+            }
         }
+    } else {
+        title = 'Historical Analysis (Current Month + Last 3 Months)';
     }
-    if (showPanIndia) {
+
+    if (isPanIndia) {
         return `Pan-India - ${title}`;
     }
-    return title;
+
+    const state = searchParams.get('state') || searchParams.get('cityState');
+    const city = searchParams.get('city');
+    if (city) {
+        return `${city}, ${state} - ${title}`;
+    } else if (state) {
+        return `${state} - ${title}`;
+    }
+    return `Pan-India - ${title}`; // Default if no geo filter
   }
 
   const getPageTitle = () => {
-    let baseTitle = `Analysis for ${product.name}`;
-    if (!showPanIndia) {
-      const state = searchParams.get('state') || searchParams.get('cityState');
-      const city = searchParams.get('city');
-      if (city) {
-        baseTitle = `${product.name} - Analysis for ${city}, ${state}`;
-      } else if (state) {
-        baseTitle = `${product.name} - Analysis for ${state}`;
-      }
-    } else {
-        baseTitle = `${product.name} - Pan-India Analysis`;
-    }
-     return `${baseTitle}`;
+    return `Analysis for ${product.name}`;
   }
   
   const maskVendor = panIndiaSummary && summary && panIndiaSummary.bestVendor?.id !== summary.bestVendor?.id;
@@ -230,49 +216,91 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
           )}
         </div>
         
-        {/* KPI Section - Monthly */}
-        {displayMonthlySummary && (
-          <div>
-             <div className="flex items-center gap-4 mb-4">
-                <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(true)}</h2>
-                <Separator />
-            </div>
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <KpiCard title="Total Purchases" value={formatNumber(displayMonthlySummary.purchaseCount)} description="Valid purchases in period" icon={ShoppingCart} />
-                <KpiCard title="Total Quantity" value={formatNumber(displayMonthlySummary.totalQuantityPurchased)} description="Cumulative units in period" icon={ShoppingBag} />
-                <KpiCard title="Total Margin Loss" value={formatCurrency(displayMonthlySummary.totalMarginLoss)} description="Cumulative margin loss in period" icon={DollarSign} />
-                <KpiCard title="Margin Loss %" value={`${formatNumber(displayMonthlySummary.marginLossPercentage || 0)}%`} description="Margin loss / total cost" icon={Percent} />
-             </div>
-          </div>
-        )}
+        {/* State/City KPI Section */}
+        <div>
+            {monthlySummary && (
+                <div>
+                    <div className="flex items-center gap-4 mb-4">
+                        <Separator />
+                        <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(true)}</h2>
+                        <Separator />
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <KpiCard title="Total Purchases" value={formatNumber(monthlySummary.purchaseCount)} description="Valid purchases in period" icon={ShoppingCart} />
+                        <KpiCard title="Total Quantity" value={formatNumber(monthlySummary.totalQuantityPurchased)} description="Cumulative units in period" icon={ShoppingBag} />
+                        <KpiCard title="Total Margin Loss" value={formatCurrency(monthlySummary.totalMarginLoss)} description="Cumulative margin loss in period" icon={DollarSign} />
+                        <KpiCard title="Margin Loss %" value={`${formatNumber(monthlySummary.marginLossPercentage || 0)}%`} description="Margin loss / total cost" icon={Percent} />
+                    </div>
+                </div>
+            )}
+            {summary && (
+                <div className="mt-6">
+                    <div className="flex items-center gap-4 mb-4">
+                        <Separator />
+                        <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false)}</h2>
+                        <Separator />
+                    </div>
+                    <div className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <KpiCard title="Best Margin %" value={`${formatNumber(summary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
+                            <KpiCard title="Worst Margin %" value={`${formatNumber(summary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
+                            <KpiCard title="Average Margin %" value={`${formatNumber(summary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
+                            <KpiCard title="Mode Margin %" value={`${formatNumber(summary.modeMargin)}%`} description="Most frequent margin" icon={Percent} />
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <KpiCard title="Best Vendor" value={summary.bestVendor?.name || 'N/A'} description="Vendor with highest margin" icon={Truck} />
+                            <KpiCard title="Worst Vendor" value={summary.worstVendor?.name || 'N/A'} description="Vendor with lowest margin" icon={Truck} />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
 
-        {/* KPI Section - Historical */}
-        {displaySummary && (
-          <div className="mt-6">
-             <div className="flex items-center gap-4 mb-4">
-                <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false)}</h2>
-                <Separator />
-            </div>
-            <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <KpiCard title="Best Margin %" value={`${formatNumber(displaySummary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
-                    <KpiCard title="Worst Margin %" value={`${formatNumber(displaySummary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
-                    <KpiCard title="Average Margin %" value={`${formatNumber(displaySummary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
-                    <KpiCard title="Mode Margin %" value={`${formatNumber(displaySummary.modeMargin)}%`} description="Most frequent margin in period" icon={Percent} />
+        {/* Pan-India KPI Section - Only shows when toggled */}
+        {showPanIndia && (
+          <div className="mt-8">
+            {panIndiaMonthlySummary && (
+                <div>
+                    <div className="flex items-center gap-4 mb-4">
+                        <Separator />
+                        <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(true, true)}</h2>
+                        <Separator />
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <KpiCard title="Total Purchases" value={formatNumber(panIndiaMonthlySummary.purchaseCount)} description="Valid purchases in period" icon={ShoppingCart} />
+                        <KpiCard title="Total Quantity" value={formatNumber(panIndiaMonthlySummary.totalQuantityPurchased)} description="Cumulative units in period" icon={ShoppingBag} />
+                        <KpiCard title="Total Margin Loss" value={formatCurrency(panIndiaMonthlySummary.totalMarginLoss)} description="Cumulative margin loss" icon={DollarSign} />
+                        <KpiCard title="Margin Loss %" value={`${formatNumber(panIndiaMonthlySummary.marginLossPercentage || 0)}%`} description="Margin loss / total cost" icon={Percent} />
+                    </div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                    <KpiCard 
-                    title="Best Vendor" 
-                    value={maskVendor && showPanIndia ? '***' : (displaySummary.bestVendor?.name || 'N/A')} 
-                    description={maskVendor && showPanIndia ? "Name hidden for privacy" : "Vendor with highest margin"} 
-                    icon={maskVendor && showPanIndia ? Lock : Truck} 
-                    />
-                    <KpiCard title="Worst Vendor" value={displaySummary.worstVendor?.name || 'N/A'} description="Vendor with lowest margin" icon={Truck} />
+            )}
+            {panIndiaSummary && (
+                <div className="mt-6">
+                    <div className="flex items-center gap-4 mb-4">
+                        <Separator />
+                        <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false, true)}</h2>
+                        <Separator />
+                    </div>
+                    <div className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <KpiCard title="Best Margin %" value={`${formatNumber(panIndiaSummary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
+                            <KpiCard title="Worst Margin %" value={`${formatNumber(panIndiaSummary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
+                            <KpiCard title="Average Margin %" value={`${formatNumber(panIndiaSummary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
+                            <KpiCard title="Mode Margin %" value={`${formatNumber(panIndiaSummary.modeMargin)}%`} description="Most frequent margin" icon={Percent} />
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                             <KpiCard 
+                                title="Best Vendor" 
+                                value={maskVendor ? '***' : (panIndiaSummary.bestVendor?.name || 'N/A')} 
+                                description={maskVendor ? "Name hidden for privacy" : "Vendor with highest margin"} 
+                                icon={maskVendor ? Lock : Truck} 
+                            />
+                            <KpiCard title="Worst Vendor" value={panIndiaSummary.worstVendor?.name || 'N/A'} description="Vendor with lowest margin" icon={Truck} />
+                        </div>
+                    </div>
                 </div>
-            </div>
-          </div>
+            )}
+        </div>
         )}
 
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-6">
