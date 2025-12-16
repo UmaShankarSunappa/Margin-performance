@@ -238,15 +238,15 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         </div>
         
         {/* State/City KPI Section */}
-        <div>
+        <div className="space-y-2">
             {monthlySummary && (
                 <div>
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-4 mb-2">
                         <Separator />
                         <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(true)}</h2>
                         <Separator />
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
                         <KpiCard title="Total Purchases" value={formatNumber(monthlySummary.purchaseCount)} description="Valid purchases in period" icon={ShoppingCart} />
                         <KpiCard title="Total Quantity" value={formatNumber(monthlySummary.totalQuantityPurchased)} description="Cumulative units in period" icon={ShoppingBag} />
                         <KpiCard title="Total Margin Loss" value={formatCurrency(monthlySummary.totalMarginLoss)} description="Cumulative margin loss in period" icon={DollarSign} />
@@ -255,20 +255,20 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 </div>
             )}
             {summary && (
-                <div className="mt-4">
-                    <div className="flex items-center gap-4 mb-4">
+                <div className="mt-2">
+                    <div className="flex items-center gap-4 mb-2">
                         <Separator />
                         <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false)}</h2>
                         <Separator />
                     </div>
-                    <div className="space-y-4">
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-2">
+                        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
                             <KpiCard title="Best Margin %" value={`${formatNumber(summary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
                             <KpiCard title="Worst Margin %" value={`${formatNumber(summary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
                             <KpiCard title="Average Margin %" value={`${formatNumber(summary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
                             <KpiCard title="Mode Margin %" value={`${formatNumber(summary.modeMargin)}%`} description="Most frequent margin" icon={Percent} />
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2 md:grid-cols-2">
                             <KpiCard title="Best Vendor" value={summary.bestVendor?.name || 'N/A'} description="Vendor with highest margin" icon={Truck} />
                             <KpiCard title="Worst Vendor" value={summary.worstVendor?.name || 'N/A'} description="Vendor with lowest margin" icon={Truck} />
                         </div>
@@ -279,15 +279,15 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
         {/* Pan-India KPI Section - Only shows when toggled */}
         {showPanIndia && (
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             {panIndiaMonthlySummary && (
                 <div>
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-4 mb-2">
                         <Separator />
                         <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(true, true)}</h2>
                         <Separator />
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
                         <KpiCard title="Total Purchases" value={formatNumber(panIndiaMonthlySummary.purchaseCount)} description="Valid purchases in period" icon={ShoppingCart} />
                         <KpiCard title="Total Quantity" value={formatNumber(panIndiaMonthlySummary.totalQuantityPurchased)} description="Cumulative units in period" icon={ShoppingBag} />
                         <KpiCard title="Total Margin Loss" value={formatCurrency(panIndiaMonthlySummary.totalMarginLoss)} description="Cumulative margin loss" icon={DollarSign} />
@@ -296,20 +296,20 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 </div>
             )}
             {panIndiaSummary && (
-                <div className="mt-4">
-                    <div className="flex items-center gap-4 mb-4">
+                <div className="mt-2">
+                    <div className="flex items-center gap-4 mb-2">
                         <Separator />
                         <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false, true)}</h2>
                         <Separator />
                     </div>
-                    <div className="space-y-4">
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-2">
+                        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
                             <KpiCard title="Best Margin %" value={`${formatNumber(panIndiaSummary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
                             <KpiCard title="Worst Margin %" value={`${formatNumber(panIndiaSummary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
                             <KpiCard title="Average Margin %" value={`${formatNumber(panIndiaSummary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
                             <KpiCard title="Mode Margin %" value={`${formatNumber(panIndiaSummary.modeMargin)}%`} description="Most frequent margin" icon={Percent} />
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2 md:grid-cols-2">
                              <KpiCard 
                                 title="Best Vendor" 
                                 value={maskVendor ? '***' : (panIndiaSummary.bestVendor?.name || 'N/A')} 
@@ -324,7 +324,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         </div>
         )}
 
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-6">
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-4">
             <Card>
                 <CardHeader>
                     <CardTitle>Average Purchase Price (Current Month + Last 3 Months)</CardTitle>
@@ -380,7 +380,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             </CardHeader>
             <CardContent>
                 {showHistory ? (
-                    <ProductPurchasesTable purchases={purchases} />
+                    <ProductPurchasesTable purchases={purchases} searchParams={searchParams.toString()} />
                 ) : (
                     <div className="text-center py-10">
                         <p className="text-muted-foreground">Purchase history cleared. Click "Show History" to view it again.</p>

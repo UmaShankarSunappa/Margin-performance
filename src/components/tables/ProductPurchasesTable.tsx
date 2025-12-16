@@ -16,9 +16,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 
 interface ProductPurchasesTableProps {
   purchases: ProcessedPurchase[];
+  searchParams: string;
 }
 
-export default function ProductPurchasesTable({ purchases }: ProductPurchasesTableProps) {
+export default function ProductPurchasesTable({ purchases, searchParams }: ProductPurchasesTableProps) {
   return (
     <div className="relative w-full overflow-auto h-[320px]">
         <Table>
@@ -45,7 +46,7 @@ export default function ProductPurchasesTable({ purchases }: ProductPurchasesTab
                 <TableCell>{p.id}</TableCell>
                 <TableCell>{p.invoiceNumber}</TableCell>
                 <TableCell>
-                    <Link href={`/vendors/${p.vendorId}?${new URLSearchParams(window.location.search)}`} className="font-medium hover:underline">
+                    <Link href={`/vendors/${p.vendorId}?${searchParams}`} className="font-medium hover:underline">
                         {p.vendor.name}
                     </Link>
                     {p.isBestMargin && !p.isMarginOutlier && !p.isQuantityOutlier && <Badge variant="outline" className="ml-2 border-primary text-primary">Best Margin</Badge>}
