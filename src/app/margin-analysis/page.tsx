@@ -111,6 +111,7 @@ function MarginAnalysisContent() {
             'Product ID': p.id,
             'Product Name': p.name,
             'Manufacturer': p.manufacturer,
+            'MRP': p.sellingPrice,
             'Total Margin Loss': p.totalMarginLoss,
             'Margin Loss %': p.marginLossPercentage,
             'Total Purchases': p.purchaseCount,
@@ -132,6 +133,7 @@ function MarginAnalysisContent() {
             { wch: 20 }, // Product ID
             { wch: 30 }, // Product Name
             { wch: 25 }, // Manufacturer
+            { wch: 15 }, // MRP
             { wch: 20 }, // Total Margin Loss
             { wch: 15 }, // Margin Loss %
             { wch: 15 }, // Total Purchases
@@ -233,6 +235,14 @@ function MarginAnalysisContent() {
                                           className="text-center"
                                         />
                                         <DataTableColumnHeader
+                                          title="MRP"
+                                          columnId="sellingPrice"
+                                          options={getColumnOptions('sellingPrice')}
+                                          onFilterChange={handleFilterChange}
+                                          format="currency"
+                                          className="text-center"
+                                        />
+                                        <DataTableColumnHeader
                                           title="Total Margin Loss"
                                           columnId="totalMarginLoss"
                                           options={getColumnOptions('totalMarginLoss')}
@@ -266,6 +276,7 @@ function MarginAnalysisContent() {
                                             <TableCell className="text-center">{product.id}</TableCell>
                                             <TableCell className="font-semibold text-center">{product.name}</TableCell>
                                             <TableCell className="text-center">{product.manufacturer}</TableCell>
+                                            <TableCell className="text-center">{formatCurrency(product.sellingPrice)}</TableCell>
                                             <TableCell className={cn("text-center font-semibold", product.totalMarginLoss > 0 && "text-destructive")}>
                                                 {formatCurrency(product.totalMarginLoss)}
                                             </TableCell>
