@@ -275,7 +275,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Average Purchase Price (Last 4 Months)</CardTitle>
+                    <CardTitle>Average Purchase Price (Current Month + Last 3 Months)</CardTitle>
                     <CardDescription>Monthly average purchase price trend for the analysis period.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -284,7 +284,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             </Card>
             <Card>
                 <CardHeader>
-                    <CardTitle>Average Margin Trend (Last 4 Months)</CardTitle>
+                    <CardTitle>Average Margin Trend (Current Month + Last 3 Months)</CardTitle>
                     <CardDescription>Monthly average margin percentage trend for the analysis period.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -295,7 +295,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Purchase History (Last 4 Months)</CardTitle>
+                    <CardTitle>Purchase History (Current Month + Last 3 Months)</CardTitle>
                     <CardDescription>
                         Displaying purchase records for the selected scope and period.
                     </CardDescription>
