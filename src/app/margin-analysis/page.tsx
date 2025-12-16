@@ -7,13 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
-import { Search, FileDown } from "lucide-react";
+import { FileDown } from "lucide-react";
 import type { MarginAnalysisProductSummary, QuantityOutlierFilter } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from '@/lib/utils';
 import { format, parse } from 'date-fns';
+import { DataTableColumnHeader } from '@/components/tables/DataTableColumnHeader';
 
 
 function MarginAnalysisContent() {
@@ -21,15 +21,15 @@ function MarginAnalysisContent() {
     const searchParams = useSearchParams();
     
     const [allProductsSummary, setAllProductsSummary] = useState<MarginAnalysisProductSummary[]>([]);
-    const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+
+    const [filters, setFilters] = useState<Record<string, string[]>>({});
 
     const scope = searchParams.get('scope');
     const state = searchParams.get('state');
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
     const period = searchParams.get('period');
-    const quantityOutlierFilter = searchParams.get('qof') as QuantityOutlierFilter | undefined;
 
     useEffect(() => {
         const fetchData = async () => {
@@ -42,12 +42,12 @@ function MarginAnalysisContent() {
             const currentPeriod = searchParams.get('period') as 'mtd' | string | null;
             const currentQof = searchParams.get('qof') as QuantityOutlierFilter | undefined;
 
-            let filters: { state?: string, city?: string, cityState?: string } = {};
+            let geoFilters: { state?: string, city?: string, cityState?: string } = {};
             if (currentScope === 'state' && currentState) {
-                filters.state = currentState;
+                geoFilters.state = currentState;
             } else if (currentScope === 'city' && currentCity && currentCityState) {
-                filters.city = currentCity;
-                filters.state = currentCityState; 
+                geoFilters.city = currentCity;
+                geoFilters.state = currentCityState; 
             }
 
             const options = { 
@@ -56,7 +56,7 @@ function MarginAnalysisContent() {
             };
 
             try {
-                const data = await getAppData(filters, options);
+                const data = await getAppData(geoFilters, options);
                 setAllProductsSummary(data.marginAnalysisSummary);
             } catch(e) {
                 console.error("Failed to load margin analysis", e);
@@ -68,13 +68,34 @@ function MarginAnalysisContent() {
 
         fetchData();
     }, [searchParams]);
+
+    const handleFilterChange = (columnId: string, selectedValues: string[]) => {
+        setFilters(prev => ({
+            ...prev,
+            [columnId]: selectedValues
+        }));
+    };
     
     const filteredSummary = useMemo(() => {
         if (isLoading) return [];
-        return allProductsSummary.filter(product => 
-            product.name.toLowerCase().includes(searchQuery.toLowerCase())
-        ).sort((a,b) => b.totalMarginLoss - a.totalMarginLoss);
-    }, [allProductsSummary, searchQuery, isLoading]);
+        
+        let filtered = allProductsSummary;
+
+        Object.entries(filters).forEach(([columnId, selectedValues]) => {
+            if (selectedValues.length > 0) {
+                filtered = filtered.filter(product => {
+                    const value = product[columnId as keyof MarginAnalysisProductSummary];
+                    return selectedValues.includes(String(value));
+                });
+            }
+        });
+
+        return filtered.sort((a,b) => b.totalMarginLoss - a.totalMarginLoss);
+    }, [allProductsSummary, filters, isLoading]);
+
+    const getColumnOptions = (columnId: keyof MarginAnalysisProductSummary) => {
+        return [...new Set(allProductsSummary.map(p => String(p[columnId])))];
+    }
 
     const handleDownload = () => {
         const dataToExport = filteredSummary.map(p => ({
@@ -159,23 +180,11 @@ function MarginAnalysisContent() {
                     </Button>
                 </div>
             </div>
-            <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Search for products..."
-                        className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-            </div>
 
             <Card>
                 <CardHeader>
                     <CardTitle>Product Drill-Down</CardTitle>
-                    <CardDescription>Click on a product to see more details about its margin performance.</CardDescription>
+                    <CardDescription>Click on a product to see more details about its margin performance. Use the column headers to filter the data.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -185,11 +194,42 @@ function MarginAnalysisContent() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Product ID</TableHead>
-                                        <TableHead>Product Name</TableHead>
-                                        <TableHead className="text-right">Total Margin Loss</TableHead>
-                                        <TableHead className="text-right">Total Purchases</TableHead>
-                                        <TableHead className="text-right">Total Vendors</TableHead>
+                                        <DataTableColumnHeader
+                                          title="Product ID"
+                                          columnId="id"
+                                          options={getColumnOptions('id')}
+                                          onFilterChange={handleFilterChange}
+                                          className="w-[150px]"
+                                        />
+                                        <DataTableColumnHeader
+                                          title="Product Name"
+                                          columnId="name"
+                                          options={getColumnOptions('name')}
+                                          onFilterChange={handleFilterChange}
+                                          className="w-[300px]"
+                                        />
+                                        <DataTableColumnHeader
+                                          title="Total Margin Loss"
+                                          columnId="totalMarginLoss"
+                                          options={getColumnOptions('totalMarginLoss')}
+                                          onFilterChange={handleFilterChange}
+                                          format="currency"
+                                          className="text-right"
+                                        />
+                                        <DataTableColumnHeader
+                                          title="Total Purchases"
+                                          columnId="purchaseCount"
+                                          options={getColumnOptions('purchaseCount')}
+                                          onFilterChange={handleFilterChange}
+                                          className="text-right"
+                                        />
+                                        <DataTableColumnHeader
+                                          title="Total Vendors"
+                                          columnId="vendorCount"
+                                          options={getColumnOptions('vendorCount')}
+                                          onFilterChange={handleFilterChange}
+                                          className="text-right"
+                                        />
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -214,7 +254,7 @@ function MarginAnalysisContent() {
                     )}
                      {filteredSummary.length === 0 && !isLoading && (
                         <div className="text-center py-10">
-                            <p className="text-muted-foreground">No products found matching your search and filter criteria.</p>
+                            <p className="text-muted-foreground">No products found matching your filter criteria.</p>
                         </div>
                     )}
                 </CardContent>
