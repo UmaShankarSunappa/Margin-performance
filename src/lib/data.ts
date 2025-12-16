@@ -1,3 +1,4 @@
+
 import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, DataFilters } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth, parse } from 'date-fns';
 
@@ -586,15 +587,13 @@ export async function getHomePageData(
     
     const analysisData = await getAppData(dataFilters, { period, quantityOutlierFilter });
     
-    // Calculate YTD
     const today = new Date();
     const currentYear = getYear(today);
     const currentMonth = getMonth(today); // 0-11
     
-    // Financial year starts in April (month 3)
     const fyStartYear = currentMonth < 3 ? currentYear - 1 : currentYear;
     const ytdStartDate = new Date(fyStartYear, 3, 1);
-
+    
     const ytdData = await getAppData(dataFilters, { 
         period: { start: ytdStartDate, end: today }, 
         quantityOutlierFilter 
