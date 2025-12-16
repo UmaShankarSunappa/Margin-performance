@@ -195,7 +195,7 @@ export default function Home() {
     .slice(0, 5) ?? [];
     
   const PillSelectTrigger = ({ children, placeholder }: { children: React.ReactNode, placeholder: string }) => (
-    <SelectTrigger className="w-full sm:w-auto rounded-full">
+    <SelectTrigger className="w-full sm:w-auto rounded-full h-9 text-left font-normal justify-start">
         {children}
         <SelectValue placeholder={placeholder} />
     </SelectTrigger>
@@ -210,7 +210,7 @@ export default function Home() {
                  <div className="flex-1">
                     <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
                 </div>
-                <Button variant="outline" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
+                <Button variant="outline" size="sm" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
                     <Filter className="mr-2"/>
                     {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
                 </Button>

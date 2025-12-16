@@ -19,6 +19,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+import { SelectTrigger, SelectValue } from '../ui/select';
 
 interface MultiSelectFilterProps {
   icon: LucideIcon;
@@ -47,17 +49,23 @@ export default function MultiSelectFilter({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-full sm:w-auto rounded-full">
-            <Icon className="mr-2 h-4 w-4" />
-            {title}
+         <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto rounded-full justify-start text-left font-normal">
+            <Icon className="mr-2" />
+            <div className="flex-1">{title}</div>
             {selectedValues.length > 0 && (
             <>
                 <Separator orientation="vertical" className="mx-2 h-4" />
                 <Badge
                 variant="secondary"
-                className="rounded-sm px-1 font-normal"
+                className="rounded-sm px-1 font-normal lg:hidden"
                 >
-                {selectedValues.length} selected
+                {selectedValues.length}
+                </Badge>
+                <Badge
+                  variant="secondary"
+                  className="rounded-sm px-1 font-normal hidden lg:block"
+                >
+                  {selectedValues.length} selected
                 </Badge>
             </>
             )}
@@ -75,7 +83,7 @@ export default function MultiSelectFilter({
                   onSelect={() => handleSelect(option)}
                   className="cursor-pointer"
                 >
-                  <Checkbox
+                   <Checkbox
                     className="mr-2"
                     checked={selectedValues.includes(option)}
                     onCheckedChange={() => handleSelect(option)}
