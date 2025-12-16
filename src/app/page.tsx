@@ -154,7 +154,7 @@ export default function Home() {
   
   const getMarginAnalysisLink = () => {
     const queryString = searchParams.toString();
-    const vendorId = data?.analysisData.vendors[0]?.id;
+    const vendorId = data?.analysisData.vendors.find(v => v.name === selectedVendor)?.id;
     if (selectedVendor !== 'all' && vendorId) {
       return `/vendors/${vendorId}?${queryString}`;
     }
@@ -334,15 +334,15 @@ export default function Home() {
                   />
             </Link>
           <KpiCard
-            title="Total SKU's with Margin Loss"
-            value={analysisData.productsSummary.filter(p => p.totalMarginLoss > 0).length.toString()}
-            description="Unique products with margin loss"
+            title="Total SKUs"
+            value={analysisData.productsSummary.length.toString()}
+            description="Unique products in scope"
             icon={Package}
           />
            <KpiCard
-            title="Total Vendors with Margin Loss"
-            value={analysisData.vendorsSummary.filter(v => v.totalMarginLoss > 0).length.toString()}
-            description="Unique vendors with margin loss"
+            title="Total Vendors"
+            value={analysisData.vendorsSummary.length.toString()}
+            description="Unique vendors in scope"
             icon={Users}
           />
         </div>
