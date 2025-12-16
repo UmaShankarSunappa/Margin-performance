@@ -88,6 +88,7 @@ export interface AppData {
 
 export interface HomePageData {
     analysisData: AppData;
+    ytdTotalMarginLoss: number;
 }
 
 export interface MonthlyAverage {

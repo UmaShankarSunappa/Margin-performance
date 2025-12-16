@@ -176,7 +176,7 @@ export function getFinancialYearMonths(startYear = 2025) {
 
 export async function getAppData(
     geoFilters: { state?: string; city?: string, cityState?: string } = {},
-    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string, quantityOutlierFilter?: QuantityOutlierFilter } = {}
+    options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string | { start: Date, end: Date }, quantityOutlierFilter?: QuantityOutlierFilter } = {}
 ): Promise<AppData> {
   const allPurchases = fullDataset.purchases;
   
@@ -184,7 +184,10 @@ export async function getAppData(
   let endDate: Date;
   let startDate: Date;
 
-  if (options.period === 'mtd' || !options.period) {
+  if (typeof options.period === 'object') {
+    startDate = options.period.start;
+    endDate = options.period.end;
+  } else if (options.period === 'mtd' || !options.period) {
       endDate = startOfToday();
       startDate = startOfMonth(subMonths(now, 3)); 
   } else {
@@ -534,8 +537,23 @@ export async function getHomePageData(
 ): Promise<HomePageData> {
     
     const analysisData = await getAppData(geoFilters, { period, quantityOutlierFilter });
+    
+    // Calculate YTD
+    const today = new Date();
+    const currentYear = getYear(today);
+    const currentMonth = getMonth(today); // 0-11
+    
+    // Financial year starts in April (month 3)
+    const fyStartYear = currentMonth < 3 ? currentYear - 1 : currentYear;
+    const ytdStartDate = new Date(fyStartYear, 3, 1);
+
+    const ytdData = await getAppData(geoFilters, { 
+        period: { start: ytdStartDate, end: today }, 
+        quantityOutlierFilter 
+    });
 
     return {
         analysisData,
+        ytdTotalMarginLoss: ytdData.totalMarginLoss,
     };
 }

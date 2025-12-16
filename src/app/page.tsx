@@ -178,7 +178,7 @@ export default function Home() {
     );
   }
 
-  const { analysisData } = data;
+  const { analysisData, ytdTotalMarginLoss } = data;
 
   const topProductsByValue = analysisData?.productsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
@@ -295,11 +295,17 @@ export default function Home() {
                 <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getAnalysisPeriodTitle()}</h2>
                 <Separator />
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <KpiCard
+                title="YTD Total Margin Loss"
+                value={formatCurrency(ytdTotalMarginLoss)}
+                description="Financial year margin loss"
+                icon={DollarSign}
+              />
               <KpiCard
                 title="Total Margin Loss"
                 value={formatCurrency(analysisData.totalMarginLoss)}
-                description="Cumulative loss across all products"
+                description="Cumulative loss for selected period"
                 icon={DollarSign}
               />
               <KpiCard
