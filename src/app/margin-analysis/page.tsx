@@ -8,7 +8,7 @@ import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 import { FileDown } from "lucide-react";
-import type { MarginAnalysisProductSummary, QuantityOutlierFilter } from '@/lib/types';
+import type { MarginAnalysisProductSummary, QuantityOutlierFilter, DataFilters } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from '@/lib/utils';
@@ -31,24 +31,39 @@ function MarginAnalysisContent() {
     const cityState = searchParams.get('cityState');
     const period = searchParams.get('period');
 
+    const dataFilters = useMemo((): DataFilters => {
+        const scope = searchParams.get('scope');
+        const state = searchParams.get('state');
+        const city = searchParams.get('city');
+        const cityState = searchParams.get('cityState');
+        const manufacturer = searchParams.get('manufacturer') || 'all';
+        const division = searchParams.get('division') || 'all';
+        const vendor = searchParams.get('vendor') || 'all';
+        const productType = searchParams.get('productType') || 'all';
+
+        let geo: { state?: string; city?: string, cityState?: string } = {};
+        if (scope === 'state' && state) {
+            geo.state = state;
+        } else if (scope === 'city' && city && cityState) {
+            geo.city = city;
+            geo.state = cityState;
+        }
+
+        return {
+            geo,
+            manufacturer,
+            division,
+            vendor,
+            productType,
+        };
+    }, [searchParams]);
+
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
             
-            const currentScope = searchParams.get('scope');
-            const currentState = searchParams.get('state');
-            const currentCity = searchParams.get('city');
-            const currentCityState = searchParams.get('cityState');
             const currentPeriod = searchParams.get('period') as 'mtd' | string | null;
             const currentQof = searchParams.get('qof') as QuantityOutlierFilter | undefined;
-
-            let geoFilters: { state?: string, city?: string, cityState?: string } = {};
-            if (currentScope === 'state' && currentState) {
-                geoFilters.state = currentState;
-            } else if (currentScope === 'city' && currentCity && currentCityState) {
-                geoFilters.city = currentCity;
-                geoFilters.state = currentCityState; 
-            }
 
             const options = { 
                 period: currentPeriod || 'mtd',
@@ -56,7 +71,7 @@ function MarginAnalysisContent() {
             };
 
             try {
-                const data = await getAppData(geoFilters, options);
+                const data = await getAppData(dataFilters, options);
                 setAllProductsSummary(data.marginAnalysisSummary);
             } catch(e) {
                 console.error("Failed to load margin analysis", e);
@@ -67,7 +82,7 @@ function MarginAnalysisContent() {
         };
 
         fetchData();
-    }, [searchParams]);
+    }, [searchParams, dataFilters]);
 
     const handleFilterChange = (columnId: string, selectedValues: string[]) => {
         setFilters(prev => ({

@@ -114,8 +114,8 @@ export type QuantityOutlierFilter = 'none' | '1percent' | '5percent';
 
 export interface DataFilters {
     geo: { state?: string; city?: string, cityState?: string };
-    manufacturers: string[];
-    divisions: string[];
-    vendors: string[];
-    productTypes: string[];
+    manufacturer: string;
+    division: string;
+    vendor: string;
+    productType: string;
 }

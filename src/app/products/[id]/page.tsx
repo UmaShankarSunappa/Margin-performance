@@ -47,10 +47,10 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     const state = searchParams.get('state');
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
-    const manufacturers = searchParams.get('manufacturers')?.split(',') || [];
-    const divisions = searchParams.get('divisions')?.split(',') || [];
-    const vendors = searchParams.get('vendors')?.split(',') || [];
-    const productTypes = searchParams.get('productTypes')?.split(',') || [];
+    const manufacturer = searchParams.get('manufacturer') || 'all';
+    const division = searchParams.get('division') || 'all';
+    const vendor = searchParams.get('vendor') || 'all';
+    const productType = searchParams.get('productType') || 'all';
     
     let geo: { state?: string; city?: string, cityState?: string } = {};
     if (scope === 'state' && state) {
@@ -62,10 +62,10 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
     return {
       geo,
-      manufacturers: manufacturers.filter(Boolean),
-      divisions: divisions.filter(Boolean),
-      vendors: vendors.filter(Boolean),
-      productTypes: productTypes.filter(Boolean),
+      manufacturer,
+      division,
+      vendor,
+      productType,
     }
   }, [searchParams]);
 

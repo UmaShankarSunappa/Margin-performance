@@ -222,31 +222,31 @@ export async function getAppData(
 
   let attributeFilteredPurchases = timeFilteredPurchases;
 
-  if (filters.productTypes.length > 0) {
+  if (filters.productType && filters.productType !== 'all') {
     attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
         const product = productMap.get(p.productId);
-        return product && filters.productTypes.includes(product.productType);
+        return product && product.productType === filters.productType;
     });
   }
-  if (filters.manufacturers.length > 0) {
+  if (filters.manufacturer && filters.manufacturer !== 'all') {
       attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
         const product = productMap.get(p.productId);
-        return product && filters.manufacturers.includes(product.manufacturer);
+        return product && product.manufacturer === filters.manufacturer;
       });
   }
-  if (filters.divisions.length > 0) {
+  if (filters.division && filters.division !== 'all') {
       attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
         const product = productMap.get(p.productId);
-        return product && filters.divisions.includes(product.division);
+        return product && product.division === filters.division;
       });
   }
   
   const vendorMap = new Map(fullDataset.vendors.map(v => [v.id, v]));
 
-  if (filters.vendors.length > 0) {
+  if (filters.vendor && filters.vendor !== 'all') {
     attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
         const vendor = vendorMap.get(p.vendorId);
-        return vendor && filters.vendors.includes(vendor.name);
+        return vendor && vendor.name === filters.vendor;
       });
   }
   

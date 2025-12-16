@@ -23,7 +23,6 @@ import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
 import { Separator } from "@/components/ui/separator";
 import { format, parse } from "date-fns";
-import MultiSelectFilter from "@/components/dashboard/MultiSelectFilter";
 import { Button } from "@/components/ui/button";
 
 type Scope = 'pan-india' | 'state' | 'city';
@@ -39,6 +38,7 @@ export default function Home() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const { manufacturers, divisions, vendors } = useMemo(() => getFilterOptions(), []);
+  const productTypes = ['Private Label', 'Non-Private Label'];
 
   // State initialization from URL or defaults
   const [scope, setScope] = useState<Scope>(() => (searchParams.get('scope') as Scope) || 'pan-india');
@@ -48,10 +48,10 @@ export default function Home() {
   const [period, setPeriod] = useState<Period>(() => searchParams.get('period') || 'mtd');
   const [quantityOutlierFilter, setQuantityOutlierFilter] = useState<QuantityOutlierFilter>(() => (searchParams.get('qof') as QuantityOutlierFilter) || 'none');
 
-  const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
-  const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
-  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
-  const [selectedProductTypes, setSelectedProductTypes] = useState<string[]>(['Non-Private Label']);
+  const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all');
+  const [selectedDivision, setSelectedDivision] = useState<string>('all');
+  const [selectedVendor, setSelectedVendor] = useState<string>('all');
+  const [selectedProductType, setSelectedProductType] = useState<string>('Non-Private Label');
 
   const financialYearMonths = useMemo(() => getFinancialYearMonths(), []);
 
@@ -65,13 +65,13 @@ export default function Home() {
     }
     params.set('period', period);
     params.set('qof', quantityOutlierFilter);
-    if (selectedManufacturers.length > 0) params.set('manufacturers', selectedManufacturers.join(','));
-    if (selectedDivisions.length > 0) params.set('divisions', selectedDivisions.join(','));
-    if (selectedVendors.length > 0) params.set('vendors', selectedVendors.join(','));
-    if (selectedProductTypes.length > 0) params.set('productTypes', selectedProductTypes.join(','));
+    if (selectedManufacturer !== 'all') params.set('manufacturer', selectedManufacturer);
+    if (selectedDivision !== 'all') params.set('division', selectedDivision);
+    if (selectedVendor !== 'all') params.set('vendor', selectedVendor);
+    if (selectedProductType !== 'all') params.set('productType', selectedProductType);
     
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedManufacturers, selectedDivisions, selectedVendors, selectedProductTypes, router, pathname]);
+  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedManufacturer, selectedDivision, selectedVendor, selectedProductType, router, pathname]);
 
   useEffect(() => {
     const s = searchParams.get('scope') as Scope || 'pan-india';
@@ -80,10 +80,10 @@ export default function Home() {
     const cs = searchParams.get('cityState') || 'Telangana';
     const p = searchParams.get('period') || 'mtd';
     const qof = searchParams.get('qof') as QuantityOutlierFilter || 'none';
-    const man = searchParams.get('manufacturers')?.split(',') || [];
-    const div = searchParams.get('divisions')?.split(',') || [];
-    const ven = searchParams.get('vendors')?.split(',') || [];
-    const pt = searchParams.get('productTypes')?.split(',') || ['Non-Private Label'];
+    const man = searchParams.get('manufacturer') || 'all';
+    const div = searchParams.get('division') || 'all';
+    const ven = searchParams.get('vendor') || 'all';
+    const pt = searchParams.get('productType') || 'Non-Private Label';
 
     setScope(s);
     setSelectedState(st);
@@ -91,10 +91,10 @@ export default function Home() {
     setSelectedCityState(cs);
     setPeriod(p);
     setQuantityOutlierFilter(qof);
-    setSelectedManufacturers(man.filter(Boolean));
-    setSelectedDivisions(div.filter(Boolean));
-    setSelectedVendors(ven.filter(Boolean));
-    setSelectedProductTypes(pt.filter(Boolean));
+    setSelectedManufacturer(man);
+    setSelectedDivision(div);
+    setSelectedVendor(ven);
+    setSelectedProductType(pt);
 
   }, [searchParams]);
 
@@ -111,10 +111,10 @@ export default function Home() {
       
       const filters: DataFilters = {
           geo,
-          manufacturers: selectedManufacturers,
-          divisions: selectedDivisions,
-          vendors: selectedVendors,
-          productTypes: selectedProductTypes,
+          manufacturer: selectedManufacturer,
+          division: selectedDivision,
+          vendor: selectedVendor,
+          productType: selectedProductType,
       }
       
       try {
@@ -129,7 +129,7 @@ export default function Home() {
     };
 
     fetchData();
-  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedManufacturers, selectedDivisions, selectedVendors, selectedProductTypes]);
+  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedManufacturer, selectedDivision, selectedVendor, selectedProductType]);
   
   useEffect(() => {
       updateUrlParams();
@@ -271,39 +271,43 @@ export default function Home() {
                     </Select>
                 </>
                 )}
-                 <MultiSelectFilter
-                    title="Product Type"
-                    icon={Tag}
-                    options={['Private Label', 'Non-Private Label']}
-                    selectedValues={selectedProductTypes}
-                    onSelectedChange={setSelectedProductTypes}
-                 />
+                 <Select onValueChange={setSelectedProductType} value={selectedProductType}>
+                    <PillSelectTrigger placeholder="Product Type">
+                        <Tag className="mr-2" />
+                    </PillSelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Product Types</SelectItem>
+                        {productTypes.map(pt => (
+                            <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                        ))}
+                    </SelectContent>
+                 </Select>
             </div>
             
             {/* Filter Row 2 - Advanced */}
             {showAdvancedFilters && (
                 <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
-                    <MultiSelectFilter
-                        title="Manufacturer"
-                        icon={Factory}
-                        options={manufacturers}
-                        selectedValues={selectedManufacturers}
-                        onSelectedChange={setSelectedManufacturers}
-                    />
-                    <MultiSelectFilter
-                        title="Division"
-                        icon={Building}
-                        options={divisions}
-                        selectedValues={selectedDivisions}
-                        onSelectedChange={setSelectedDivisions}
-                    />
-                    <MultiSelectFilter
-                        title="Vendor"
-                        icon={Truck}
-                        options={vendors}
-                        selectedValues={selectedVendors}
-                        onSelectedChange={setSelectedVendors}
-                    />
+                    <Select onValueChange={setSelectedManufacturer} value={selectedManufacturer}>
+                        <PillSelectTrigger placeholder="Manufacturer"><Factory className="mr-2" /></PillSelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Manufacturers</SelectItem>
+                            {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select onValueChange={setSelectedDivision} value={selectedDivision}>
+                        <PillSelectTrigger placeholder="Division"><Building className="mr-2" /></PillSelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Divisions</SelectItem>
+                            {divisions.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select onValueChange={setSelectedVendor} value={selectedVendor}>
+                        <PillSelectTrigger placeholder="Vendor"><Truck className="mr-2" /></PillSelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Vendors</SelectItem>
+                            {vendors.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                     <Select onValueChange={(value: QuantityOutlierFilter) => setQuantityOutlierFilter(value)} value={quantityOutlierFilter}>
                         <PillSelectTrigger placeholder="Outlier Filter">
                             <Filter className="mr-2" />
