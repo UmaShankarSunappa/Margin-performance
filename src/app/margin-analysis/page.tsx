@@ -25,12 +25,6 @@ function MarginAnalysisContent() {
 
     const [filters, setFilters] = useState<Record<string, string[]>>({});
 
-    const scope = searchParams.get('scope');
-    const state = searchParams.get('state');
-    const city = searchParams.get('city');
-    const cityState = searchParams.get('cityState');
-    const period = searchParams.get('period');
-
     const dataFilters = useMemo((): DataFilters => {
         const scope = searchParams.get('scope');
         const state = searchParams.get('state');
@@ -152,6 +146,7 @@ function MarginAnalysisContent() {
         
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+        const period = searchParams.get('period');
         const filename = period ? `product_margin_analysis_${period}.xlsx` : 'product_margin_analysis.xlsx';
         saveAs(data, filename);
     };
@@ -162,6 +157,7 @@ function MarginAnalysisContent() {
     }
     
     const getFormattedPeriod = () => {
+        const period = searchParams.get('period');
         if (!period) return '';
         if (period === 'mtd') return ' (Current Month till Date)';
         try {
@@ -173,6 +169,10 @@ function MarginAnalysisContent() {
     };
     
     const getPageTitle = () => {
+      const scope = searchParams.get('scope');
+      const state = searchParams.get('state');
+      const city = searchParams.get('city');
+      const cityState = searchParams.get('cityState');
       let baseTitle = '';
       if (scope === 'city' && city && cityState) {
         baseTitle = `Product Margin Loss Analysis for ${city}, ${cityState}`;
@@ -214,14 +214,14 @@ function MarginAnalysisContent() {
                                           columnId="id"
                                           options={getColumnOptions('id')}
                                           onFilterChange={handleFilterChange}
-                                          className="w-[150px]"
+                                          className="w-[150px] text-center"
                                         />
                                         <DataTableColumnHeader
                                           title="Product Name"
                                           columnId="name"
                                           options={getColumnOptions('name')}
                                           onFilterChange={handleFilterChange}
-                                          className="w-[300px]"
+                                          className="w-[300px] text-center"
                                         />
                                         <DataTableColumnHeader
                                           title="Total Margin Loss"
@@ -229,21 +229,21 @@ function MarginAnalysisContent() {
                                           options={getColumnOptions('totalMarginLoss')}
                                           onFilterChange={handleFilterChange}
                                           format="currency"
-                                          className="text-right"
+                                          className="text-center"
                                         />
                                         <DataTableColumnHeader
                                           title="Total Purchases"
                                           columnId="purchaseCount"
                                           options={getColumnOptions('purchaseCount')}
                                           onFilterChange={handleFilterChange}
-                                          className="text-right"
+                                          className="text-center"
                                         />
                                         <DataTableColumnHeader
                                           title="Total Vendors"
                                           columnId="vendorCount"
                                           options={getColumnOptions('vendorCount')}
                                           onFilterChange={handleFilterChange}
-                                          className="text-right"
+                                          className="text-center"
                                         />
                                     </TableRow>
                                 </TableHeader>
@@ -254,13 +254,13 @@ function MarginAnalysisContent() {
                                             onClick={() => handleRowClick(product.id)}
                                             className="cursor-pointer"
                                         >
-                                            <TableCell>{product.id}</TableCell>
-                                            <TableCell className="font-semibold">{product.name}</TableCell>
-                                            <TableCell className={cn("text-right font-semibold", product.totalMarginLoss > 0 && "text-destructive")}>
+                                            <TableCell className="text-center">{product.id}</TableCell>
+                                            <TableCell className="font-semibold text-center">{product.name}</TableCell>
+                                            <TableCell className={cn("text-center font-semibold", product.totalMarginLoss > 0 && "text-destructive")}>
                                                 {formatCurrency(product.totalMarginLoss)}
                                             </TableCell>
-                                            <TableCell className="text-right">{product.purchaseCount}</TableCell>
-                                            <TableCell className="text-right">{product.vendorCount}</TableCell>
+                                            <TableCell className="text-center">{product.purchaseCount}</TableCell>
+                                            <TableCell className="text-center">{product.vendorCount}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
