@@ -1,3 +1,4 @@
+
 'use client';
 import { notFound, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -166,7 +167,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   };
   
   const getKpiTitle = (monthly: boolean = false) => {
-    let title = 'Historical Analysis (Last 4 Months)';
+    let title = 'Historical Analysis (Current Month + Last 3 Months)';
     if(monthly) {
         if (period === 'mtd') {
             title = `Analysis for Current Month`;
