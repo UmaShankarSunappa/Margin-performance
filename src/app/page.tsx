@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin, Calendar, Filter, ChevronsUpDown, Factory, Building, Tag } from "lucide-react";
+import { DollarSign, Package, Truck, MapPin, Calendar, Filter, ChevronsUpDown, Factory, Building, Tag, Users } from "lucide-react";
 import Header from "@/components/Header";
 import { getHomePageData, getFinancialYearMonths, getFilterOptions } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
@@ -160,13 +160,13 @@ export default function Home() {
   
   const getAnalysisPeriodTitle = () => {
       if (period === 'mtd') {
-        return `Analysis for Current Month`;
+        return `Current Month Analysis`;
       }
       try {
           const date = parse(period, 'yyyy-MM', new Date());
           return `Analysis for ${format(date, 'MMMM yyyy')}`;
       } catch(e) {
-        return 'Analysis for Selected Period';
+        return 'Selected Period Analysis';
       }
   };
 
@@ -207,120 +207,126 @@ export default function Home() {
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex flex-col gap-4">
-             <div className="flex items-center justify-between gap-4">
-                 <div className="flex-1">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
                     <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
-                    <Filter className="mr-2"/>
-                    {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
-                </Button>
-            </div>
-            {/* Filter Row 1 */}
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-                 <Select onValueChange={(value: Period) => setPeriod(value)} value={period}>
-                    <PillSelectTrigger placeholder="Select Period">
-                        <Calendar className="mr-2" />
-                    </PillSelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="mtd">Current Month till Date</SelectItem>
-                        {financialYearMonths.map(month => (
-                            <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                
-                <Select onValueChange={(value: Scope) => setScope(value)} value={scope}>
-                    <PillSelectTrigger placeholder="Select Scope">
-                        <MapPin className="mr-2" />
-                    </PillSelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="pan-india">Pan India</SelectItem>
-                        <SelectItem value="state">State-wise</SelectItem>
-                        <SelectItem value="city">City-wise</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                {scope === 'state' && (
-                <Select onValueChange={setSelectedState} value={selectedState}>
-                    <PillSelectTrigger placeholder="Select State"><></></PillSelectTrigger>
-                    <SelectContent>
-                    {geoLocations.states.map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                    ))}
-                    </SelectContent>
-                </Select>
-                )}
-
-                {scope === 'city' && (
-                <>
-                    <Select onValueChange={setSelectedCityState} value={selectedCityState}>
-                        <PillSelectTrigger placeholder="Select State"><></></PillSelectTrigger>
-                        <SelectContent>
-                        {geoLocations.states.map(state => (
-                            <SelectItem key={state} value={state}>{state}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <Select onValueChange={setSelectedCity} value={selectedCity}>
-                        <PillSelectTrigger placeholder="Select City"><></></PillSelectTrigger>
-                        <SelectContent>
-                            {getCitiesForSelectedState().map(city => (
-                                <SelectItem key={city} value={city}>{city}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </>
-                )}
-                 <Select onValueChange={setSelectedProductType} value={selectedProductType}>
-                    <PillSelectTrigger placeholder="Product Type">
-                        <Tag className="mr-2" />
-                    </PillSelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Product Types</SelectItem>
-                        {productTypes.map(pt => (
-                            <SelectItem key={pt} value={pt}>{pt}</SelectItem>
-                        ))}
-                    </SelectContent>
-                 </Select>
             </div>
             
-            {/* Filter Row 2 - Advanced */}
-            {showAdvancedFilters && (
-                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
-                    <Select onValueChange={setSelectedManufacturer} value={selectedManufacturer}>
-                        <PillSelectTrigger placeholder="Manufacturer"><Factory className="mr-2" /></PillSelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Manufacturers</SelectItem>
-                            {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select onValueChange={setSelectedDivision} value={selectedDivision}>
-                        <PillSelectTrigger placeholder="Division"><Building className="mr-2" /></PillSelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Divisions</SelectItem>
-                            {divisions.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select onValueChange={setSelectedVendor} value={selectedVendor}>
-                        <PillSelectTrigger placeholder="Vendor"><Truck className="mr-2" /></PillSelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Vendors</SelectItem>
-                            {vendors.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select onValueChange={(value: QuantityOutlierFilter) => setQuantityOutlierFilter(value)} value={quantityOutlierFilter}>
-                        <PillSelectTrigger placeholder="Outlier Filter">
-                            <Filter className="mr-2" />
-                        </PillSelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Outlier Filter</SelectItem>
-                        <SelectItem value="1percent">Exclude &lt; 1% Qty</SelectItem>
-                        <SelectItem value="5percent">Exclude &lt; 5% Qty</SelectItem>
-                      </SelectContent>
-                    </Select>
-                </div>
-            )}
+            <Card>
+                <CardContent className="p-4 flex flex-col gap-4">
+                    {/* Top Row Filters */}
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <Select onValueChange={(value: Period) => setPeriod(value)} value={period}>
+                            <PillSelectTrigger placeholder="Select Period">
+                                <Calendar className="mr-2" />
+                            </PillSelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="mtd">Current Month till Date</SelectItem>
+                                {financialYearMonths.map(month => (
+                                    <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        
+                        <Select onValueChange={(value: Scope) => setScope(value)} value={scope}>
+                            <PillSelectTrigger placeholder="Select Scope">
+                                <MapPin className="mr-2" />
+                            </PillSelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="pan-india">Pan India</SelectItem>
+                                <SelectItem value="state">State-wise</SelectItem>
+                                <SelectItem value="city">City-wise</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {scope === 'state' && (
+                        <Select onValueChange={setSelectedState} value={selectedState}>
+                            <PillSelectTrigger placeholder="Select State"><></></PillSelectTrigger>
+                            <SelectContent>
+                            {geoLocations.states.map(state => (
+                                <SelectItem key={state} value={state}>{state}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        )}
+
+                        {scope === 'city' && (
+                        <>
+                            <Select onValueChange={setSelectedCityState} value={selectedCityState}>
+                                <PillSelectTrigger placeholder="Select State"><></></PillSelectTrigger>
+                                <SelectContent>
+                                {geoLocations.states.map(state => (
+                                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <Select onValueChange={setSelectedCity} value={selectedCity}>
+                                <PillSelectTrigger placeholder="Select City"><></></PillSelectTrigger>
+                                <SelectContent>
+                                    {getCitiesForSelectedState().map(city => (
+                                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </>
+                        )}
+                        <Select onValueChange={setSelectedProductType} value={selectedProductType}>
+                            <PillSelectTrigger placeholder="Product Type">
+                                <Tag className="mr-2" />
+                            </PillSelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Product Types</SelectItem>
+                                {productTypes.map(pt => (
+                                    <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                         <Select onValueChange={(value: QuantityOutlierFilter) => setQuantityOutlierFilter(value)} value={quantityOutlierFilter}>
+                            <PillSelectTrigger placeholder="Outlier Filter">
+                                <Filter className="mr-2" />
+                            </PillSelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No Outlier Filter</SelectItem>
+                            <SelectItem value="1percent">Exclude &lt; 1% Qty</SelectItem>
+                            <SelectItem value="5percent">Exclude &lt; 5% Qty</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <div className="flex-grow"></div>
+                        <Button variant="outline" size="sm" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
+                            {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
+                        </Button>
+                    </div>
+
+                     {/* Advanced Filters */}
+                    {showAdvancedFilters && (
+                         <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+                             <Select onValueChange={setSelectedManufacturer} value={selectedManufacturer}>
+                                <PillSelectTrigger placeholder="Manufacturer"><Factory className="mr-2" /></PillSelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Manufacturers</SelectItem>
+                                    {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select onValueChange={setSelectedDivision} value={selectedDivision}>
+                                <PillSelectTrigger placeholder="Division"><Building className="mr-2" /></PillSelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Divisions</SelectItem>
+                                    {divisions.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select onValueChange={setSelectedVendor} value={selectedVendor}>
+                                <PillSelectTrigger placeholder="Vendor"><Truck className="mr-2" /></PillSelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Vendors</SelectItem>
+                                    {vendors.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                         </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
         
         {/* KPIs for last 4 months */}
@@ -334,10 +340,10 @@ export default function Home() {
               <KpiCard
                 title="YTD Total Margin Loss"
                 value={formatCurrency(ytdTotalMarginLoss)}
-                description="Financial year margin loss"
+                description="Financial year-to-date margin loss"
                 icon={DollarSign}
               />
-              <Link href={getMarginAnalysisLink()} className="block transition-all duration-300 hover:shadow-lg hover:border-primary rounded-lg">
+              <Link href={getMarginAnalysisLink()} className="block">
                   <KpiCard
                     title="Total Margin Loss"
                     value={formatCurrency(analysisData.totalMarginLoss)}
@@ -354,7 +360,7 @@ export default function Home() {
                <KpiCard
                 title="Total Vendors"
                 value={analysisData.vendors.length.toString()}
-                description="Total unique vendors in the system"
+                description="Total unique vendors with purchases"
                 icon={Truck}
               />
             </div>
@@ -384,7 +390,7 @@ export default function Home() {
                 <ProductMarginLossPercentageChart data={topProductsByPercentage} />
               </CardContent>
             </Card>
-            <Card>
+            <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Top 5 Vendors by Margin Loss</CardTitle>
                 <CardDescription>

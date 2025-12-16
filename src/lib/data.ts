@@ -54,8 +54,15 @@ function generateData() {
   const vendorCount = 66;
   const purchasesPerProduct = 20;
   
-  const manufacturers = ["Sun Pharma", "Cipla", "Dr. Reddy's", "Lupin", "Zydus Cadila"];
-  const divisions = ["Cardiology", "Oncology", "Neurology", "Gastro", "Derma"];
+  const manufacturers = {
+    "Sun Pharma": ["Consumer Healthcare", "Specialty Generic"],
+    "Cipla": ["Respiratory", "Urology", "Cardiology"],
+    "Dr. Reddy's": ["Pharmaceutical Services", "Generic Formulations"],
+    "Lupin": ["Anti-Infective", "Diabetes"],
+    "Zydus Cadila": ["Wellness", "Animal Health"],
+    "Glenmark": ["Glenmark Consumer Care", "Glenmark Digital Health"],
+  };
+  const manufacturerNames = Object.keys(manufacturers);
 
 
   // Generate Products
@@ -87,13 +94,16 @@ function generateData() {
     if (i > pharmaNames.length) {
         productName = `${productName} #${Math.floor(i / pharmaNames.length) + 1}`;
     }
+    const manufacturer = manufacturerNames[i % manufacturerNames.length];
+    const divisions = manufacturers[manufacturer as keyof typeof manufacturers];
+    const division = divisions[i % divisions.length];
 
     products.push({
       id: `sku-${i}`,
       name: productName,
       sellingPrice: Math.random() * 300 + 20,
-      manufacturer: manufacturers[i % manufacturers.length],
-      division: divisions[i % divisions.length],
+      manufacturer,
+      division,
       productType: Math.random() > 0.15 ? 'Non-Private Label' : 'Private Label',
     });
   }
@@ -171,22 +181,17 @@ export function getFilterOptions() {
 export function getFinancialYearMonths(startYear = 2025) {
     const months = [];
     const today = new Date();
-    const currentMonth = today.getMonth(); // 0-11
-    const currentYear = today.getFullYear();
-
-    // Financial year starts in April (month 3)
-    let financialYearStart = new Date(startYear, 3, 1);
-
-    // Loop from the start of the financial year to the current month
-    while (financialYearStart <= today) {
+    
+    // Loop for the last 12 months from today
+    for (let i = 0; i < 12; i++) {
+        const date = subMonths(today, i);
         months.push({
-            label: formatDate(financialYearStart, 'MMM yyyy'),
-            value: formatDate(financialYearStart, 'yyyy-MM'),
+            label: formatDate(date, 'MMM yyyy'),
+            value: formatDate(date, 'yyyy-MM'),
         });
-        financialYearStart.setMonth(financialYearStart.getMonth() + 1);
     }
 
-    return months.reverse(); // Show most recent first
+    return months.reverse(); // Show most recent last
 }
 
 
@@ -371,9 +376,9 @@ export async function getAppData(
     const totalMarginLoss = nonOutlierPurchases.reduce((acc, p) => acc + p.marginLoss, 0);
     const totalPurchaseValue = nonOutlierPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
     
-    const bestMarginForPeriod = Math.max(...nonOutlierPurchases.map(p => p.margin));
-    const bestMarginPurchase = nonOutlierPurchases.find(p => p.margin === bestMarginForPeriod)!;
-    const worstMarginPurchase = nonOutlierPurchases.sort((a,b) => a.margin - b.margin)[0];
+    const bestMarginForPeriod = nonOutlierPurchases.length > 0 ? Math.max(...nonOutlierPurchases.map(p => p.margin)) : 0;
+    const bestMarginPurchase = nonOutlierPurchases.find(p => p.margin === bestMarginForPeriod);
+    const worstMarginPurchase = nonOutlierPurchases.length > 0 ? nonOutlierPurchases.sort((a,b) => a.margin - b.margin)[0] : undefined;
     const benchmark = productBenchmarks.get(product.id);
     const modeMargin = benchmark?.mode || 0;
     
@@ -386,9 +391,9 @@ export async function getAppData(
       averageMargin: nonOutlierPurchases.length > 0 ? nonOutlierPurchases.reduce((acc, p) => acc + p.margin, 0) / nonOutlierPurchases.length : 0,
       bestMargin: bestMarginForPeriod,
       totalQuantityPurchased: nonOutlierPurchases.reduce((acc, p) => acc + p.quantity, 0),
-      worstMargin: worstMarginPurchase.margin,
-      bestVendor: {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name },
-      worstVendor: { id: worstMarginPurchase.vendor.id, name: worstMarginPurchase.vendor.name },
+      worstMargin: worstMarginPurchase?.margin ?? 0,
+      bestVendor: bestMarginPurchase ? {id: bestMarginPurchase.vendor.id, name: bestMarginPurchase.vendor.name } : null,
+      worstVendor: worstMarginPurchase ? { id: worstMarginPurchase.vendor.id, name: worstMarginPurchase.vendor.name } : null,
       marginLossPercentage: totalPurchaseValue > 0 ? (totalMarginLoss / totalPurchaseValue) * 100 : 0,
       modeMargin: modeMargin,
     };

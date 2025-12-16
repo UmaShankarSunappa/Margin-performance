@@ -1,8 +1,7 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
-import { BarChartHorizontal } from 'lucide-react';
+import { UserCircle } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from './ui/button';
 
 const MedPlusLogo = () => (
     <svg width="120" height="40" viewBox="0 0 165 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -17,7 +16,6 @@ const MedPlusLogo = () => (
     </svg>
 );
 
-
 export default function Header() {
   const searchParams = useSearchParams();
   
@@ -26,7 +24,6 @@ export default function Header() {
     const queryString = searchParams.toString();
     return `/margin-analysis${queryString ? `?${queryString}` : ''}`;
   }
-
 
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:px-6">
@@ -39,6 +36,12 @@ export default function Header() {
                 <span className="sr-only">Margin Performance Dashboard</span>
             </Link>
             <h1 className="text-xl font-semibold">Margin Performance Dashboard</h1>
+        </div>
+        <div className="ml-auto flex items-center gap-4">
+            <div className="text-sm text-muted-foreground">
+                Data updated a few seconds ago
+            </div>
+            <UserCircle className="h-8 w-8 text-muted-foreground" />
         </div>
     </header>
   );
