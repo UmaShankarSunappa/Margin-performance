@@ -260,19 +260,23 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false)}</h2>
                 <Separator />
             </div>
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <KpiCard title="Best Margin %" value={`${formatNumber(displaySummary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
-                <KpiCard title="Worst Margin %" value={`${formatNumber(displaySummary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
-                <KpiCard title="Average Margin %" value={`${formatNumber(displaySummary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
-                <KpiCard title="Mode Margin %" value={`${formatNumber(displaySummary.modeMargin)}%`} description="Most frequent margin in period" icon={Percent} />
-                <KpiCard 
-                  title="Best Vendor" 
-                  value={maskVendor && showPanIndia ? '***' : (displaySummary.bestVendor?.name || 'N/A')} 
-                  description={maskVendor && showPanIndia ? "Name hidden for privacy" : "Vendor with highest margin"} 
-                  icon={maskVendor && showPanIndia ? Lock : Truck} 
-                />
-                <KpiCard title="Worst Vendor" value={displaySummary.worstVendor?.name || 'N/A'} description="Vendor with lowest margin" icon={Truck} />
-             </div>
+            <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <KpiCard title="Best Margin %" value={`${formatNumber(displaySummary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
+                    <KpiCard title="Worst Margin %" value={`${formatNumber(displaySummary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
+                    <KpiCard title="Average Margin %" value={`${formatNumber(displaySummary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
+                    <KpiCard title="Mode Margin %" value={`${formatNumber(displaySummary.modeMargin)}%`} description="Most frequent margin in period" icon={Percent} />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                    <KpiCard 
+                    title="Best Vendor" 
+                    value={maskVendor && showPanIndia ? '***' : (displaySummary.bestVendor?.name || 'N/A')} 
+                    description={maskVendor && showPanIndia ? "Name hidden for privacy" : "Vendor with highest margin"} 
+                    icon={maskVendor && showPanIndia ? Lock : Truck} 
+                    />
+                    <KpiCard title="Worst Vendor" value={displaySummary.worstVendor?.name || 'N/A'} description="Vendor with lowest margin" icon={Truck} />
+                </div>
+            </div>
           </div>
         )}
 
