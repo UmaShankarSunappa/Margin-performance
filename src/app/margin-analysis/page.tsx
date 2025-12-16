@@ -19,6 +19,11 @@ import { format, parse } from 'date-fns';
 function MarginAnalysisContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    
+    const [allProductsSummary, setAllProductsSummary] = useState<MarginAnalysisProductSummary[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+
     const scope = searchParams.get('scope');
     const state = searchParams.get('state');
     const city = searchParams.get('city');
@@ -26,35 +31,43 @@ function MarginAnalysisContent() {
     const period = searchParams.get('period');
     const quantityOutlierFilter = searchParams.get('qof') as QuantityOutlierFilter | undefined;
 
-    const [allProductsSummary, setAllProductsSummary] = useState<MarginAnalysisProductSummary[]>([]);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
-
-    const filters = useMemo(() => {
-        let f: { state?: string, city?: string, cityState?: string } = {};
-        if (scope === 'state' && state) {
-            f.state = state;
-        } else if (scope === 'city' && city && cityState) {
-            f.city = city;
-            f.state = cityState; // Pass state for city filter
-        }
-        return f;
-    }, [scope, state, city, cityState]);
-    
-    const options = useMemo(() => {
-        return { 
-            period: period as 'mtd' | string,
-            quantityOutlierFilter
-        };
-    }, [period, quantityOutlierFilter]);
-
     useEffect(() => {
-        setIsLoading(true);
-        getAppData(filters, options).then(data => {
-            setAllProductsSummary(data.marginAnalysisSummary);
-            setIsLoading(false);
-        });
-    }, [filters, options]);
+        const fetchData = async () => {
+            setIsLoading(true);
+            
+            const currentScope = searchParams.get('scope');
+            const currentState = searchParams.get('state');
+            const currentCity = searchParams.get('city');
+            const currentCityState = searchParams.get('cityState');
+            const currentPeriod = searchParams.get('period') as 'mtd' | string | null;
+            const currentQof = searchParams.get('qof') as QuantityOutlierFilter | undefined;
+
+            let filters: { state?: string, city?: string, cityState?: string } = {};
+            if (currentScope === 'state' && currentState) {
+                filters.state = currentState;
+            } else if (currentScope === 'city' && currentCity && currentCityState) {
+                filters.city = currentCity;
+                filters.state = currentCityState; 
+            }
+
+            const options = { 
+                period: currentPeriod || 'mtd',
+                quantityOutlierFilter: currentQof || 'none'
+            };
+
+            try {
+                const data = await getAppData(filters, options);
+                setAllProductsSummary(data.marginAnalysisSummary);
+            } catch(e) {
+                console.error("Failed to load margin analysis", e);
+                setAllProductsSummary([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [searchParams]);
     
     const filteredSummary = useMemo(() => {
         if (isLoading) return [];
