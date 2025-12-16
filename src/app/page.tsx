@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin, Calendar, BarChartHorizontal, Filter } from "lucide-react";
+import { DollarSign, Package, Truck, MapPin, Calendar, Filter } from "lucide-react";
 
 import Header from "@/components/Header";
 import { getHomePageData, getFinancialYearMonths } from "@/lib/data";
@@ -22,10 +22,8 @@ import type { HomePageData, QuantityOutlierFilter } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { format, parse, startOfMonth, subMonths } from "date-fns";
-
+import { format, parse } from "date-fns";
 
 type Scope = 'pan-india' | 'state' | 'city';
 type Period = 'mtd' | string; // 'mtd' or 'YYYY-MM'
@@ -51,26 +49,33 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const params = new URLSearchParams(searchParams);
-      
-      let filter: { state?: string, city?: string, cityState?: string } = {};
-      const currentScope = params.get('scope') as Scope || 'pan-india';
-      const currentPeriod = params.get('period') as Period || 'mtd';
-      const currentQuantityOutlierFilter = params.get('qof') as QuantityOutlierFilter || 'none';
+      const currentScope = (searchParams.get('scope') as Scope) || 'pan-india';
+      const currentPeriod = (searchParams.get('period') as Period) || 'mtd';
+      const currentQuantityOutlierFilter = (searchParams.get('qof') as QuantityOutlierFilter) || 'none';
 
+      let filter: { state?: string, city?: string, cityState?: string } = {};
+      
       if (currentScope === 'state') {
-        const state = params.get('state');
+        const state = searchParams.get('state');
         if (state) filter.state = state;
       } else if (currentScope === 'city') {
-        const city = params.get('city');
-        const cityState = params.get('cityState');
-        if (city && cityState) filter = { city, state: cityState };
+        const city = searchParams.get('city');
+        const cityState = searchParams.get('cityState');
+        if (city && cityState) {
+            filter.city = city;
+            filter.state = cityState;
+        }
       }
       
-      const homePageData = await getHomePageData(filter, currentPeriod, currentQuantityOutlierFilter);
-
-      setData(homePageData);
-      setIsLoading(false);
+      try {
+        const homePageData = await getHomePageData(filter, currentPeriod, currentQuantityOutlierFilter);
+        setData(homePageData);
+      } catch (error) {
+        console.error("Failed to fetch home page data:", error);
+        setData(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchData();
@@ -278,14 +283,6 @@ export default function Home() {
                     )}
                 </div>
             </div>
-            <div className="flex justify-end">
-                <Button variant="outline" asChild>
-                    <Link href={getMarginAnalysisLink()}>
-                        <BarChartHorizontal className="mr-2 h-4 w-4" />
-                        Margin Analysis
-                    </Link>
-                </Button>
-            </div>
         </div>
         
         {/* KPIs for last 4 months */}
@@ -302,12 +299,14 @@ export default function Home() {
                 description="Financial year margin loss"
                 icon={DollarSign}
               />
-              <KpiCard
-                title="Total Margin Loss"
-                value={formatCurrency(analysisData.totalMarginLoss)}
-                description="Cumulative loss for selected period"
-                icon={DollarSign}
-              />
+              <Link href={getMarginAnalysisLink()} className="block transition-all duration-300 hover:shadow-lg hover:border-primary rounded-lg">
+                  <KpiCard
+                    title="Total Margin Loss"
+                    value={formatCurrency(analysisData.totalMarginLoss)}
+                    description="Cumulative loss for selected period"
+                    icon={DollarSign}
+                  />
+              </Link>
               <KpiCard
                 title="Total SKU's"
                 value={analysisData.products.length.toString()}
