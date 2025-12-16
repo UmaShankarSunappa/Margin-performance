@@ -1,4 +1,4 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, ProductMonthlySummary } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, DataFilters } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth, parse } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -52,6 +52,10 @@ function generateData() {
   const productCount = 150;
   const vendorCount = 66;
   const purchasesPerProduct = 20;
+  
+  const manufacturers = ["Sun Pharma", "Cipla", "Dr. Reddy's", "Lupin", "Zydus Cadila"];
+  const divisions = ["Cardiology", "Oncology", "Neurology", "Gastro", "Derma"];
+
 
   // Generate Products
   const pharmaNames = [
@@ -87,6 +91,9 @@ function generateData() {
       id: `sku-${i}`,
       name: productName,
       sellingPrice: Math.random() * 300 + 20,
+      manufacturer: manufacturers[i % manufacturers.length],
+      division: divisions[i % divisions.length],
+      productType: Math.random() > 0.15 ? 'Non-Private Label' : 'Private Label',
     });
   }
 
@@ -152,6 +159,14 @@ function generateData() {
 // Store the full dataset in memory
 const fullDataset = generateData();
 
+export function getFilterOptions() {
+    const manufacturers = [...new Set(fullDataset.products.map(p => p.manufacturer))];
+    const divisions = [...new Set(fullDataset.products.map(p => p.division))];
+    const vendors = [...new Set(fullDataset.vendors.map(v => v.name))];
+    return { manufacturers, divisions, vendors };
+}
+
+
 export function getFinancialYearMonths(startYear = 2025) {
     const months = [];
     const today = new Date();
@@ -175,10 +190,11 @@ export function getFinancialYearMonths(startYear = 2025) {
 
 
 export async function getAppData(
-    geoFilters: { state?: string; city?: string, cityState?: string } = {},
+    filters: DataFilters,
     options: { customMultipliers?: Record<string, number>, period?: 'mtd' | string | { start: Date, end: Date }, quantityOutlierFilter?: QuantityOutlierFilter } = {}
 ): Promise<AppData> {
   const allPurchases = fullDataset.purchases;
+  const allProducts = fullDataset.products;
   
   const now = new Date();
   let endDate: Date;
@@ -202,23 +218,54 @@ export async function getAppData(
       return purchaseDate >= startDate && purchaseDate <= endDate;
   });
 
-  let filteredPurchases = timeFilteredPurchases;
+  const productMap = new Map(allProducts.map(p => [p.id, p]));
 
-  if (geoFilters.city && geoFilters.state) {
-    filteredPurchases = timeFilteredPurchases.filter(p => p.city === geoFilters.city && p.state === geoFilters.state);
-  } else if (geoFilters.state) {
-    filteredPurchases = timeFilteredPurchases.filter(p => p.state === geoFilters.state);
+  let attributeFilteredPurchases = timeFilteredPurchases;
+
+  if (filters.productTypes.length > 0) {
+    attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
+        const product = productMap.get(p.productId);
+        return product && filters.productTypes.includes(product.productType);
+    });
   }
+  if (filters.manufacturers.length > 0) {
+      attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
+        const product = productMap.get(p.productId);
+        return product && filters.manufacturers.includes(product.manufacturer);
+      });
+  }
+  if (filters.divisions.length > 0) {
+      attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
+        const product = productMap.get(p.productId);
+        return product && filters.divisions.includes(product.division);
+      });
+  }
+  
+  const vendorMap = new Map(fullDataset.vendors.map(v => [v.id, v]));
+
+  if (filters.vendors.length > 0) {
+    attributeFilteredPurchases = attributeFilteredPurchases.filter(p => {
+        const vendor = vendorMap.get(p.vendorId);
+        return vendor && filters.vendors.includes(vendor.name);
+      });
+  }
+  
+  let geoFilteredPurchases = attributeFilteredPurchases;
+
+  if (filters.geo.city && filters.geo.state) {
+    geoFilteredPurchases = attributeFilteredPurchases.filter(p => p.city === filters.geo.city && p.state === filters.geo.state);
+  } else if (filters.geo.state) {
+    geoFilteredPurchases = attributeFilteredPurchases.filter(p => p.state === filters.geo.state);
+  }
+  
+  let filteredPurchases = geoFilteredPurchases;
 
   const productIdsInScope = new Set(filteredPurchases.map(p => p.productId));
   const vendorIdsInScope = new Set(filteredPurchases.map(p => p.vendorId));
 
-  const products = fullDataset.products.filter(p => productIdsInScope.has(p.id));
+  const products = allProducts.filter(p => productIdsInScope.has(p.id));
   const vendors = fullDataset.vendors.filter(v => vendorIdsInScope.has(v.id));
   
-  const productMap = new Map(fullDataset.products.map(p => [p.id, p]));
-  const vendorMap = new Map(fullDataset.vendors.map(v => [v.id, v]));
-
   // Calculate margins for all purchases globally first to establish benchmarks
   const allPurchasesWithMargin = allPurchases.map(purchase => {
     const product = productMap.get(purchase.productId)!;
@@ -248,7 +295,7 @@ export async function getAppData(
 
 
   const productBenchmarks = new Map<string, { mode: number, bestMargin: number, bestPrice: number }>();
-  for (const product of fullDataset.products) {
+  for (const product of allProducts) {
       // Benchmark should be calculated on the entire history to find the true best margin
       const productPurchases = allPurchasesWithMargin.filter(p => p.productId === product.id);
       if (productPurchases.length === 0) continue;
@@ -387,7 +434,7 @@ export async function getAppData(
 
 export async function getProductDetails(
     productId: string, 
-    filters: { state?: string; city?: string, cityState?:string } = {}, 
+    dataFilters: DataFilters, 
     customMultipliers?: Record<string, number>,
     getPanIndiaData: boolean = false,
     period: string = 'mtd',
@@ -399,7 +446,7 @@ export async function getProductDetails(
     const options = { customMultipliers, period, quantityOutlierFilter };
 
     // This fetches data for the entire 4-month window
-    const dataForPeriod = await getAppData({ ...filters }, options);
+    const dataForPeriod = await getAppData(dataFilters, options);
     const purchasesForPeriod = dataForPeriod.processedPurchases.filter(p => p.productId === productId);
     const summaryForPeriod = dataForPeriod.productsSummary.find(p => p.id === productId);
 
@@ -463,7 +510,8 @@ export async function getProductDetails(
     let panIndiaMonthlySummary: ProductMonthlySummary | undefined = undefined;
 
     if (getPanIndiaData) {
-        const panIndiaData = await getAppData({}, options);
+        const panIndiaDataFilters = { ...dataFilters, geo: {} };
+        const panIndiaData = await getAppData(panIndiaDataFilters, options);
         panIndiaSummary = panIndiaData.productsSummary.find(p => p.id === productId);
 
         const panIndiaMonthlyPurchases = panIndiaData.processedPurchases.filter(p => {
@@ -494,11 +542,11 @@ export async function getProductDetails(
 
 export async function getVendorDetails(
     vendorId: string,
-    filters: { state?: string; city?: string, cityState?:string } = {},
+    dataFilters: DataFilters,
     period: string = 'mtd',
     quantityOutlierFilter: QuantityOutlierFilter = 'none'
 ) {
-    const data = await getAppData(filters, { period, quantityOutlierFilter }); 
+    const data = await getAppData(dataFilters, { period, quantityOutlierFilter }); 
     const vendor = data.vendors.find(v => v.id === vendorId);
     if (!vendor) return null;
     
@@ -531,12 +579,12 @@ export async function getVendorDetails(
 
 
 export async function getHomePageData(
-    geoFilters: { state?: string; city?: string, cityState?: string } = {},
+    dataFilters: DataFilters,
     period: 'mtd' | string,
     quantityOutlierFilter: QuantityOutlierFilter
 ): Promise<HomePageData> {
     
-    const analysisData = await getAppData(geoFilters, { period, quantityOutlierFilter });
+    const analysisData = await getAppData(dataFilters, { period, quantityOutlierFilter });
     
     // Calculate YTD
     const today = new Date();
@@ -547,7 +595,7 @@ export async function getHomePageData(
     const fyStartYear = currentMonth < 3 ? currentYear - 1 : currentYear;
     const ytdStartDate = new Date(fyStartYear, 3, 1);
 
-    const ytdData = await getAppData(geoFilters, { 
+    const ytdData = await getAppData(dataFilters, { 
         period: { start: ytdStartDate, end: today }, 
         quantityOutlierFilter 
     });

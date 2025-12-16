@@ -1,0 +1,105 @@
+'use client';
+import { useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
+
+interface MultiSelectFilterProps {
+  icon: LucideIcon;
+  title: string;
+  options: string[];
+  selectedValues: string[];
+  onSelectedChange: (selected: string[]) => void;
+}
+
+export default function MultiSelectFilter({
+  icon: Icon,
+  title,
+  options,
+  selectedValues,
+  onSelectedChange,
+}: MultiSelectFilterProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleSelect = (value: string) => {
+    const newSelected = selectedValues.includes(value)
+      ? selectedValues.filter((v) => v !== value)
+      : [...selectedValues, value];
+    onSelectedChange(newSelected);
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="w-full sm:w-auto rounded-full">
+            <Icon className="mr-2 h-4 w-4" />
+            {title}
+            {selectedValues.length > 0 && (
+            <>
+                <Separator orientation="vertical" className="mx-2 h-4" />
+                <Badge
+                variant="secondary"
+                className="rounded-sm px-1 font-normal"
+                >
+                {selectedValues.length} selected
+                </Badge>
+            </>
+            )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={`Search ${title}...`} />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup>
+              {options.sort().map((option) => (
+                <CommandItem
+                  key={option}
+                  onSelect={() => handleSelect(option)}
+                  className="cursor-pointer"
+                >
+                  <Checkbox
+                    className="mr-2"
+                    checked={selectedValues.includes(option)}
+                    onCheckedChange={() => handleSelect(option)}
+                  />
+                  <span>{option}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {selectedValues.length > 0 && (
+                <>
+                    <CommandSeparator />
+                    <CommandGroup>
+                        <CommandItem
+                            onSelect={() => onSelectedChange([])}
+                            className="justify-center text-center text-sm"
+                        >
+                            Clear filters
+                        </CommandItem>
+                    </CommandGroup>
+                </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}

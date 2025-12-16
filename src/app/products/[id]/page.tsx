@@ -19,7 +19,7 @@ import ProductMarginTrendChart from "@/components/charts/ProductMarginTrendChart
 import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, QuantityOutlierFilter, ProductMonthlySummary } from "@/lib/types";
+import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, QuantityOutlierFilter, ProductMonthlySummary, DataFilters } from "@/lib/types";
 import { useEffect, useState, useMemo } from "react";
 import Loading from "@/app/loading";
 import { MultiplierAdjustmentDialog } from "@/components/dialogs/MultiplierAdjustmentDialog";
@@ -42,20 +42,31 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const initialScope = searchParams.get('scope');
   const [showPanIndia, setShowPanIndia] = useState(false);
 
-  const filters = useMemo(() => {
+  const dataFilters = useMemo((): DataFilters => {
     const scope = searchParams.get('scope');
     const state = searchParams.get('state');
     const city = searchParams.get('city');
     const cityState = searchParams.get('cityState');
+    const manufacturers = searchParams.get('manufacturers')?.split(',') || [];
+    const divisions = searchParams.get('divisions')?.split(',') || [];
+    const vendors = searchParams.get('vendors')?.split(',') || [];
+    const productTypes = searchParams.get('productTypes')?.split(',') || [];
     
-    let f: { state?: string; city?: string, cityState?: string } = {};
+    let geo: { state?: string; city?: string, cityState?: string } = {};
     if (scope === 'state' && state) {
-      f.state = state;
+      geo.state = state;
     } else if (scope === 'city' && city && cityState) {
-      f.city = city;
-      f.state = cityState;
+      geo.city = city;
+      geo.state = cityState;
     }
-    return f;
+
+    return {
+      geo,
+      manufacturers: manufacturers.filter(Boolean),
+      divisions: divisions.filter(Boolean),
+      vendors: vendors.filter(Boolean),
+      productTypes: productTypes.filter(Boolean),
+    }
   }, [searchParams]);
 
   const period = searchParams.get('period') || 'mtd';
@@ -63,11 +74,11 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
   useEffect(() => {
     setIsLoading(true);
-    getProductDetails(params.id, filters, customMultipliers, showPanIndia, period, quantityOutlierFilter).then(data => {
+    getProductDetails(params.id, dataFilters, customMultipliers, showPanIndia, period, quantityOutlierFilter).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, customMultipliers, filters, showPanIndia, period, quantityOutlierFilter]);
+  }, [params.id, customMultipliers, dataFilters, showPanIndia, period, quantityOutlierFilter]);
 
   const handleMultiplierSave = (newMultiplier: number) => {
     setCustomMultipliers(prev => ({ ...prev, [params.id]: newMultiplier }));
@@ -121,23 +132,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   };
 
   const getBackLink = () => {
-    const scope = searchParams.get('scope');
-    const state = searchParams.get('state');
-    const city = searchParams.get('city');
-    const cityState = searchParams.get('cityState');
-    const period = searchParams.get('period');
-    const qof = searchParams.get('qof');
-
-    const params = new URLSearchParams();
-    if(scope) params.set('scope', scope);
-    if(state) params.set('state', state);
-    if(city) params.set('city', city);
-    if(cityState) params.set('cityState', cityState);
-    if(period) params.set('period', period);
-    if(qof) params.set('qof', qof);
-    
-    const queryString = params.toString();
-
+    const queryString = searchParams.toString();
     // Go back to margin analysis as it's the previous drill down step
     return `/margin-analysis?${queryString}`;
   }
@@ -150,7 +145,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     notFound();
   }
 
-  const { product, purchases, summary, panIndiaSummary, monthlySummary, monthlyAverages } = details;
+  const { product, purchases, summary, panIndiaSummary, monthlySummary, panIndiaMonthlySummary, monthlyAverages } = details;
   
   const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
   

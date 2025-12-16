@@ -2,6 +2,9 @@ export interface Product {
   id: string;
   name: string;
   sellingPrice: number;
+  manufacturer: string;
+  division: string;
+  productType: 'Private Label' | 'Non-Private Label';
 }
 
 export interface Vendor {
@@ -108,3 +111,11 @@ export interface ProductDetails {
 }
 
 export type QuantityOutlierFilter = 'none' | '1percent' | '5percent';
+
+export interface DataFilters {
+    geo: { state?: string; city?: string, cityState?: string };
+    manufacturers: string[];
+    divisions: string[];
+    vendors: string[];
+    productTypes: string[];
+}

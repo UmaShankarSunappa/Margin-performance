@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -9,21 +9,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Package, Truck, MapPin, Calendar, Filter } from "lucide-react";
-
+import { DollarSign, Package, Truck, MapPin, Calendar, Filter, ChevronsUpDown, Factory, Building, Tag } from "lucide-react";
 import Header from "@/components/Header";
-import { getHomePageData, getFinancialYearMonths } from "@/lib/data";
+import { getHomePageData, getFinancialYearMonths, getFilterOptions } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 import KpiCard from "@/components/dashboard/KPI";
 import ProductMarginLossChart from "@/components/charts/ProductMarginLossChart";
 import VendorMarginLossChart from "@/components/charts/VendorMarginLossChart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { HomePageData, QuantityOutlierFilter } from "@/lib/types";
+import type { HomePageData, QuantityOutlierFilter, DataFilters } from "@/lib/types";
 import { Loader2 } from 'lucide-react';
 import { geoLocations } from "@/lib/data";
 import ProductMarginLossPercentageChart from "@/components/charts/ProductMarginLossPercentageChart";
 import { Separator } from "@/components/ui/separator";
 import { format, parse } from "date-fns";
+import MultiSelectFilter from "@/components/dashboard/MultiSelectFilter";
+import { Button } from "@/components/ui/button";
 
 type Scope = 'pan-india' | 'state' | 'city';
 type Period = 'mtd' | string; // 'mtd' or 'YYYY-MM'
@@ -35,6 +36,9 @@ export default function Home() {
 
   const [data, setData] = useState<HomePageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  const { manufacturers, divisions, vendors } = useMemo(() => getFilterOptions(), []);
 
   // State initialization from URL or defaults
   const [scope, setScope] = useState<Scope>(() => (searchParams.get('scope') as Scope) || 'pan-india');
@@ -43,32 +47,78 @@ export default function Home() {
   const [selectedCity, setSelectedCity] = useState<string>(() => searchParams.get('city') || 'Hyderabad');
   const [period, setPeriod] = useState<Period>(() => searchParams.get('period') || 'mtd');
   const [quantityOutlierFilter, setQuantityOutlierFilter] = useState<QuantityOutlierFilter>(() => (searchParams.get('qof') as QuantityOutlierFilter) || 'none');
-  
+
+  const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
+  const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
+  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [selectedProductTypes, setSelectedProductTypes] = useState<string[]>(['Non-Private Label']);
+
   const financialYearMonths = useMemo(() => getFinancialYearMonths(), []);
+
+  const updateUrlParams = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set('scope', scope);
+    if (scope === 'state') params.set('state', selectedState);
+    if (scope === 'city') {
+        params.set('city', selectedCity);
+        params.set('cityState', selectedCityState);
+    }
+    params.set('period', period);
+    params.set('qof', quantityOutlierFilter);
+    if (selectedManufacturers.length > 0) params.set('manufacturers', selectedManufacturers.join(','));
+    if (selectedDivisions.length > 0) params.set('divisions', selectedDivisions.join(','));
+    if (selectedVendors.length > 0) params.set('vendors', selectedVendors.join(','));
+    if (selectedProductTypes.length > 0) params.set('productTypes', selectedProductTypes.join(','));
+    
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedManufacturers, selectedDivisions, selectedVendors, selectedProductTypes, router, pathname]);
+
+  useEffect(() => {
+    const s = searchParams.get('scope') as Scope || 'pan-india';
+    const st = searchParams.get('state') || 'Telangana';
+    const c = searchParams.get('city') || 'Hyderabad';
+    const cs = searchParams.get('cityState') || 'Telangana';
+    const p = searchParams.get('period') || 'mtd';
+    const qof = searchParams.get('qof') as QuantityOutlierFilter || 'none';
+    const man = searchParams.get('manufacturers')?.split(',') || [];
+    const div = searchParams.get('divisions')?.split(',') || [];
+    const ven = searchParams.get('vendors')?.split(',') || [];
+    const pt = searchParams.get('productTypes')?.split(',') || ['Non-Private Label'];
+
+    setScope(s);
+    setSelectedState(st);
+    setSelectedCity(c);
+    setSelectedCityState(cs);
+    setPeriod(p);
+    setQuantityOutlierFilter(qof);
+    setSelectedManufacturers(man.filter(Boolean));
+    setSelectedDivisions(div.filter(Boolean));
+    setSelectedVendors(ven.filter(Boolean));
+    setSelectedProductTypes(pt.filter(Boolean));
+
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const currentScope = (searchParams.get('scope') as Scope) || 'pan-india';
-      const currentPeriod = (searchParams.get('period') as Period) || 'mtd';
-      const currentQuantityOutlierFilter = (searchParams.get('qof') as QuantityOutlierFilter) || 'none';
-
-      let filter: { state?: string, city?: string, cityState?: string } = {};
       
-      if (currentScope === 'state') {
-        const state = searchParams.get('state');
-        if (state) filter.state = state;
-      } else if (currentScope === 'city') {
-        const city = searchParams.get('city');
-        const cityState = searchParams.get('cityState');
-        if (city && cityState) {
-            filter.city = city;
-            filter.state = cityState;
-        }
+      const geo: { state?: string, city?: string, cityState?: string } = {};
+      if (scope === 'state') geo.state = selectedState;
+      if (scope === 'city') {
+          geo.city = selectedCity;
+          geo.state = selectedCityState;
+      }
+      
+      const filters: DataFilters = {
+          geo,
+          manufacturers: selectedManufacturers,
+          divisions: selectedDivisions,
+          vendors: selectedVendors,
+          productTypes: selectedProductTypes,
       }
       
       try {
-        const homePageData = await getHomePageData(filter, currentPeriod, currentQuantityOutlierFilter);
+        const homePageData = await getHomePageData(filters, period, quantityOutlierFilter);
         setData(homePageData);
       } catch (error) {
         console.error("Failed to fetch home page data:", error);
@@ -79,65 +129,12 @@ export default function Home() {
     };
 
     fetchData();
-  }, [searchParams]);
-
-  const updateUrlParams = (newParams: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams);
-    Object.entries(newParams).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
-    });
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
-  const handleScopeChange = (value: Scope) => {
-    setScope(value);
-    const newParams: Record<string, string | null> = { scope: value, state: null, city: null, cityState: null };
-    if (value === 'state') {
-      newParams.state = selectedState;
-    } else if (value === 'city') {
-       newParams.cityState = selectedCityState;
-       newParams.city = selectedCity;
-    }
-    newParams.period = period;
-    newParams.qof = quantityOutlierFilter;
-    updateUrlParams(newParams);
-  };
+  }, [scope, selectedState, selectedCity, selectedCityState, period, quantityOutlierFilter, selectedManufacturers, selectedDivisions, selectedVendors, selectedProductTypes]);
   
-  const handleStateChange = (state: string) => {
-      setSelectedState(state);
-      updateUrlParams({ scope: 'state', state: state, city: null, cityState: null, period: period, qof: quantityOutlierFilter });
-  }
+  useEffect(() => {
+      updateUrlParams();
+  }, [updateUrlParams]);
 
-  const handleCityStateChange = (state: string) => {
-    setSelectedCityState(state);
-    const citiesForNewState = geoLocations.citiesByState[state] || [];
-    const newCity = citiesForNewState.length > 0 ? citiesForNewState[0] : '';
-    setSelectedCity(newCity);
-    updateUrlParams({ scope: 'city', cityState: state, city: newCity, state: null, period: period, qof: quantityOutlierFilter });
-  };
-
-  const handleCityChange = (city: string) => {
-      setSelectedCity(city);
-      updateUrlParams({ scope: 'city', cityState: selectedCityState, city, state: null, period: period, qof: quantityOutlierFilter });
-  }
-  
-  const handlePeriodChange = (value: Period) => {
-    setPeriod(value);
-    const currentParams = new URLSearchParams(searchParams);
-    currentParams.set('period', value);
-    router.push(`${pathname}?${currentParams.toString()}`);
-  }
-  
-  const handleQuantityOutlierFilterChange = (value: QuantityOutlierFilter) => {
-    setQuantityOutlierFilter(value);
-    const currentParams = new URLSearchParams(searchParams);
-    currentParams.set('qof', value);
-    router.push(`${pathname}?${currentParams.toString()}`);
-  };
 
   const getCitiesForSelectedState = () => {
       return geoLocations.citiesByState[selectedCityState] || [];
@@ -196,93 +193,129 @@ export default function Home() {
   const topVendors = analysisData?.vendorsSummary
     .sort((a, b) => b.totalMarginLoss - a.totalMarginLoss)
     .slice(0, 5) ?? [];
+    
+  const PillSelectTrigger = ({ children, placeholder }: { children: React.ReactNode, placeholder: string }) => (
+    <SelectTrigger className="w-full sm:w-auto rounded-full">
+        {children}
+        <SelectValue placeholder={placeholder} />
+    </SelectTrigger>
+  );
 
   return (
     <>
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+             <div className="flex items-center justify-between gap-4">
                  <div className="flex-1">
                     <h1 className="text-2xl font-semibold">{getDashboardTitle()}</h1>
                 </div>
-                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                    <Select onValueChange={(value: Period) => handlePeriodChange(value)} value={period}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                            <Calendar className="mr-2" />
-                            <SelectValue placeholder="Select Period" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="mtd">Current Month till Date</SelectItem>
-                            {financialYearMonths.map(month => (
-                                <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    
-                    <Select onValueChange={handleQuantityOutlierFilterChange} value={quantityOutlierFilter}>
-                      <SelectTrigger className="w-full sm:w-[240px]">
-                        <Filter className="mr-2" />
-                        <SelectValue placeholder="Quantity Outlier Filter" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="1percent">Exclude purchases &lt; 1% of SKU quantity</SelectItem>
-                        <SelectItem value="5percent">Exclude purchases &lt; 5% of SKU quantity</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Select onValueChange={(value: Scope) => handleScopeChange(value)} value={scope}>
-                    <SelectTrigger className="w-full sm:w-[150px]">
+                <Button variant="outline" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
+                    <Filter className="mr-2"/>
+                    {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
+                </Button>
+            </div>
+            {/* Filter Row 1 */}
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+                 <Select onValueChange={(value: Period) => setPeriod(value)} value={period}>
+                    <PillSelectTrigger placeholder="Select Period">
+                        <Calendar className="mr-2" />
+                    </PillSelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="mtd">Current Month till Date</SelectItem>
+                        {financialYearMonths.map(month => (
+                            <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                
+                <Select onValueChange={(value: Scope) => setScope(value)} value={scope}>
+                    <PillSelectTrigger placeholder="Select Scope">
                         <MapPin className="mr-2" />
-                        <SelectValue placeholder="Select Scope" />
-                    </SelectTrigger>
+                    </PillSelectTrigger>
                     <SelectContent>
                         <SelectItem value="pan-india">Pan India</SelectItem>
                         <SelectItem value="state">State-wise</SelectItem>
                         <SelectItem value="city">City-wise</SelectItem>
                     </SelectContent>
-                    </Select>
+                </Select>
 
-                    {scope === 'state' && (
-                    <Select onValueChange={handleStateChange} value={selectedState}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Select State" />
-                        </SelectTrigger>
+                {scope === 'state' && (
+                <Select onValueChange={setSelectedState} value={selectedState}>
+                    <PillSelectTrigger placeholder="Select State"><></></PillSelectTrigger>
+                    <SelectContent>
+                    {geoLocations.states.map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                )}
+
+                {scope === 'city' && (
+                <>
+                    <Select onValueChange={setSelectedCityState} value={selectedCityState}>
+                        <PillSelectTrigger placeholder="Select State"><></></PillSelectTrigger>
                         <SelectContent>
                         {geoLocations.states.map(state => (
                             <SelectItem key={state} value={state}>{state}</SelectItem>
                         ))}
                         </SelectContent>
                     </Select>
-                    )}
-
-                    {scope === 'city' && (
-                    <>
-                        <Select onValueChange={handleCityStateChange} value={selectedCityState}>
-                            <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Select State" />
-                            </SelectTrigger>
-                            <SelectContent>
-                            {geoLocations.states.map(state => (
-                                <SelectItem key={state} value={state}>{state}</SelectItem>
+                    <Select onValueChange={setSelectedCity} value={selectedCity}>
+                        <PillSelectTrigger placeholder="Select City"><></></PillSelectTrigger>
+                        <SelectContent>
+                            {getCitiesForSelectedState().map(city => (
+                                <SelectItem key={city} value={city}>{city}</SelectItem>
                             ))}
-                            </SelectContent>
-                        </Select>
-                        <Select onValueChange={handleCityChange} value={selectedCity}>
-                            <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Select City" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {getCitiesForSelectedState().map(city => (
-                                    <SelectItem key={city} value={city}>{city}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </>
-                    )}
-                </div>
+                        </SelectContent>
+                    </Select>
+                </>
+                )}
+                 <MultiSelectFilter
+                    title="Product Type"
+                    icon={Tag}
+                    options={['Private Label', 'Non-Private Label']}
+                    selectedValues={selectedProductTypes}
+                    onSelectedChange={setSelectedProductTypes}
+                 />
             </div>
+            
+            {/* Filter Row 2 - Advanced */}
+            {showAdvancedFilters && (
+                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+                    <MultiSelectFilter
+                        title="Manufacturer"
+                        icon={Factory}
+                        options={manufacturers}
+                        selectedValues={selectedManufacturers}
+                        onSelectedChange={setSelectedManufacturers}
+                    />
+                    <MultiSelectFilter
+                        title="Division"
+                        icon={Building}
+                        options={divisions}
+                        selectedValues={selectedDivisions}
+                        onSelectedChange={setSelectedDivisions}
+                    />
+                    <MultiSelectFilter
+                        title="Vendor"
+                        icon={Truck}
+                        options={vendors}
+                        selectedValues={selectedVendors}
+                        onSelectedChange={setSelectedVendors}
+                    />
+                    <Select onValueChange={(value: QuantityOutlierFilter) => setQuantityOutlierFilter(value)} value={quantityOutlierFilter}>
+                        <PillSelectTrigger placeholder="Outlier Filter">
+                            <Filter className="mr-2" />
+                        </PillSelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Outlier Filter</SelectItem>
+                        <SelectItem value="1percent">Exclude &lt; 1% Qty</SelectItem>
+                        <SelectItem value="5percent">Exclude &lt; 5% Qty</SelectItem>
+                      </SelectContent>
+                    </Select>
+                </div>
+            )}
         </div>
         
         {/* KPIs for last 4 months */}

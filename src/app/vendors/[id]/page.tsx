@@ -4,13 +4,13 @@ import Link from "next/link";
 import { ArrowLeft, Package, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Header from "@/components/Header";
 import { getVendorDetails } from "@/lib/data";
 import VendorProductsTable from "@/components/tables/VendorProductsTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { Vendor, VendorSummary, VendorProductSummary, QuantityOutlierFilter } from "@/lib/types";
+import type { Vendor, VendorSummary, VendorProductSummary, QuantityOutlierFilter, DataFilters } from "@/lib/types";
 import Loading from "@/app/loading";
 
 type VendorDetailPageProps = {
@@ -30,28 +30,43 @@ export default function VendorDetailPage({ params }: VendorDetailPageProps) {
   const [details, setDetails] = useState<VendorDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const dataFilters = useMemo((): DataFilters => {
+    const scope = searchParams.get('scope') || 'pan-india';
+    const state = searchParams.get('state');
+    const city = searchParams.get('city');
+    const cityState = searchParams.get('cityState');
+    const manufacturers = searchParams.get('manufacturers')?.split(',') || [];
+    const divisions = searchParams.get('divisions')?.split(',') || [];
+    const vendors = searchParams.get('vendors')?.split(',') || [];
+    const productTypes = searchParams.get('productTypes')?.split(',') || [];
+    
+    let geo: { state?: string; city?: string, cityState?: string } = {};
+    if (scope === 'state' && state) {
+      geo.state = state;
+    } else if (scope === 'city' && city && cityState) {
+      geo.city = city;
+      geo.state = cityState;
+    }
+
+    return {
+      geo,
+      manufacturers: manufacturers.filter(Boolean),
+      divisions: divisions.filter(Boolean),
+      vendors: vendors.filter(Boolean),
+      productTypes: productTypes.filter(Boolean),
+    }
+  }, [searchParams]);
+  
   const period = searchParams.get('period') || 'mtd';
-  const scope = searchParams.get('scope') || 'pan-india';
-  const state = searchParams.get('state');
-  const city = searchParams.get('city');
-  const cityState = searchParams.get('cityState');
   const quantityOutlierFilter = searchParams.get('qof') as QuantityOutlierFilter | undefined;
 
   useEffect(() => {
     setIsLoading(true);
-    let filters: { state?: string; city?: string, cityState?: string } = {};
-    if (scope === 'state' && state) {
-      filters.state = state;
-    } else if (scope === 'city' && city && cityState) {
-      filters.city = city;
-      filters.state = cityState;
-    }
-    
-    getVendorDetails(params.id, filters, period, quantityOutlierFilter).then(data => {
+    getVendorDetails(params.id, dataFilters, period, quantityOutlierFilter).then(data => {
       setDetails(data);
       setIsLoading(false);
     });
-  }, [params.id, period, scope, state, city, cityState, quantityOutlierFilter]);
+  }, [params.id, period, dataFilters, quantityOutlierFilter]);
   
   const getBackLink = () => {
     const params = new URLSearchParams(searchParams);
