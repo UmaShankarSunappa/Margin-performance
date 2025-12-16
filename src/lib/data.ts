@@ -54,13 +54,13 @@ function generateData() {
   const vendorCount = 66;
   const purchasesPerProduct = 20;
   
-  const manufacturers = {
+   const manufacturers = {
     "Sun Pharma": ["Consumer Healthcare", "Specialty Generic"],
     "Cipla": ["Respiratory", "Urology", "Cardiology"],
     "Dr. Reddy's": ["Pharmaceutical Services", "Generic Formulations"],
     "Lupin": ["Anti-Infective", "Diabetes"],
     "Zydus Cadila": ["Wellness", "Animal Health"],
-    "Glenmark": ["Glenmark Consumer Care", "Glenmark Digital Health"],
+    "Glenmark": ["Glenmark Consumer Care", "Sanitary Hygine"],
   };
   const manufacturerNames = Object.keys(manufacturers);
 
@@ -117,8 +117,11 @@ function generateData() {
   }
 
   let purchaseIdCounter = 1;
-  const today = new Date();
-  
+  const currentSimulatedDate = new Date(2025, 11, 15); // December 15, 2025
+
+  // Months with data: Dec, Nov, Oct, Sep (2025)
+  const monthsWithData = [11, 10, 9, 8]; 
+
   products.forEach(product => {
     const commonMarginPercentage = (Math.random() * 15 + 10) / 100;
     const commonPurchasePrice = product.sellingPrice * (1 - commonMarginPercentage);
@@ -126,8 +129,12 @@ function generateData() {
     
     for (let i = 0; i < purchasesPerProduct; i++) {
         const vendor = vendors[Math.floor(Math.random() * vendors.length)];
-        // Generate dates within the last 2 years for broad data
-        const date = sub(today, { days: Math.floor(Math.random() * 730) }).toISOString().split('T')[0];
+        
+        // Generate dates only in the specified months of 2025
+        const monthIndex = monthsWithData[Math.floor(Math.random() * monthsWithData.length)];
+        const dayOfMonth = Math.floor(Math.random() * 28) + 1; // 1 to 28
+        const date = new Date(2025, monthIndex, dayOfMonth).toISOString().split('T')[0];
+
         const quantity = Math.floor(Math.random() * 150) + 10;
         let purchasePrice;
         
@@ -178,20 +185,22 @@ export function getFilterOptions() {
 }
 
 
-export function getFinancialYearMonths(startYear = 2025) {
+export function getFinancialYearMonths() {
     const months = [];
-    const today = new Date();
-    
-    // Loop for the last 12 months from today
-    for (let i = 0; i < 12; i++) {
-        const date = subMonths(today, i);
+    // Per user request, current month is Dec 2025
+    const endDate = new Date(2025, 11, 1); 
+    const fyStartDate = new Date(2025, 3, 1); // April 2025
+
+    let currentDate = endDate;
+    while (currentDate >= fyStartDate) {
         months.push({
-            label: formatDate(date, 'MMM yyyy'),
-            value: formatDate(date, 'yyyy-MM'),
+            label: formatDate(currentDate, 'MMM yyyy'),
+            value: formatDate(currentDate, 'yyyy-MM'),
         });
+        currentDate = subMonths(currentDate, 1);
     }
 
-    return months.reverse(); // Show most recent last
+    return months;
 }
 
 
@@ -202,7 +211,7 @@ export async function getAppData(
   const allPurchases = fullDataset.purchases;
   const allProducts = fullDataset.products;
   
-  const now = new Date();
+  const now = new Date(2025, 11, 15); // Simulate "today" as Dec 15, 2025
   let endDate: Date;
   let startDate: Date;
 
@@ -210,7 +219,7 @@ export async function getAppData(
     startDate = options.period.start;
     endDate = options.period.end;
   } else if (options.period === 'mtd' || !options.period) {
-      endDate = startOfToday();
+      endDate = now;
       startDate = startOfMonth(subMonths(now, 3)); 
   } else {
       const [year, month] = options.period.split('-').map(Number);
@@ -457,12 +466,12 @@ export async function getProductDetails(
     const summaryForPeriod = dataForPeriod.productsSummary.find(p => p.id === productId);
 
     // Define the date range for the primary selected month
-    const now = new Date();
+    const now = new Date(2025, 11, 15); // Simulate "today" as Dec 15, 2025
     let monthlyEndDate: Date;
     let monthlyStartDate: Date;
 
     if (period === 'mtd' || !period) {
-        monthlyEndDate = startOfToday();
+        monthlyEndDate = now;
         monthlyStartDate = startOfMonth(now);
     } else {
         const [year, month] = period.split('-').map(Number);
@@ -592,7 +601,7 @@ export async function getHomePageData(
     
     const analysisData = await getAppData(dataFilters, { period, quantityOutlierFilter });
     
-    const today = new Date();
+    const today = new Date(2025, 11, 15);
     const currentYear = getYear(today);
     const currentMonth = getMonth(today); // 0-11
     
@@ -609,3 +618,5 @@ export async function getHomePageData(
         ytdTotalMarginLoss: ytdData.totalMarginLoss,
     };
 }
+
+    
