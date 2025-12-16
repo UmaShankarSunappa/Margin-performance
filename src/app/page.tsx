@@ -51,7 +51,7 @@ export default function Home() {
 
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all');
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
-  const [selectedVendor, setSelectedVendor] = useState<string>(() => searchParams.get('vendor') || 'all');
+  const [selectedVendor, setSelectedVendor] = useState<string>('all');
   const [selectedProductType, setSelectedProductType] = useState<string>('all');
 
   const financialYearMonths = useMemo(() => getFinancialYearMonths(), []);
@@ -205,7 +205,7 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-4 md:p-8">
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
@@ -271,18 +271,7 @@ export default function Home() {
                             </Select>
                         </>
                         )}
-                        <Select onValueChange={setSelectedProductType} value={selectedProductType}>
-                            <PillSelectTrigger placeholder="Product Type">
-                                <Tag className="mr-2" />
-                            </PillSelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Product Types</SelectItem>
-                                {productTypes.map(pt => (
-                                    <SelectItem key={pt} value={pt}>{pt}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                         <Select onValueChange={(value: QuantityOutlierFilter) => setQuantityOutlierFilter(value)} value={quantityOutlierFilter}>
+                        <Select onValueChange={(value: QuantityOutlierFilter) => setQuantityOutlierFilter(value)} value={quantityOutlierFilter}>
                             <PillSelectTrigger placeholder="Outlier Filter">
                                 <Filter className="mr-2" />
                             </PillSelectTrigger>
@@ -323,6 +312,17 @@ export default function Home() {
                                     {vendors.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                                 </SelectContent>
                             </Select>
+                            <Select onValueChange={setSelectedProductType} value={selectedProductType}>
+                                <PillSelectTrigger placeholder="Product Type">
+                                    <Tag className="mr-2" />
+                                </PillSelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Product Types</SelectItem>
+                                    {productTypes.map(pt => (
+                                        <SelectItem key={pt} value={pt}>{pt}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                          </div>
                     )}
                 </CardContent>
@@ -330,8 +330,8 @@ export default function Home() {
         </div>
         
         {/* KPIs for last 4 months */}
-        <div className="mt-6">
-            <div className="flex items-center gap-4 mb-4">
+        <div>
+            <div className="flex items-center gap-4 my-4">
                 <Separator />
                 <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getAnalysisPeriodTitle()}</h2>
                 <Separator />
@@ -367,7 +367,7 @@ export default function Home() {
         </div>
 
 
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-8">
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Top 5 Products by Margin Loss (Value)</CardTitle>
