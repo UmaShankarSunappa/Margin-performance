@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import Header from "@/components/Header";
 import { getAppData } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
-import { FileDown } from "lucide-react";
+import { FileDown, Filter } from "lucide-react";
 import type { MarginAnalysisProductSummary, QuantityOutlierFilter, DataFilters } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

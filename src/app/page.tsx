@@ -51,8 +51,8 @@ export default function Home() {
 
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all');
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
-  const [selectedVendor, setSelectedVendor] = useState<string>('all');
-  const [selectedProductType, setSelectedProductType] = useState<string>('Non-Private Label');
+  const [selectedVendor, setSelectedVendor] = useState<string>(() => searchParams.get('vendor') || 'all');
+  const [selectedProductType, setSelectedProductType] = useState<string>('all');
 
   const financialYearMonths = useMemo(() => getFinancialYearMonths(), []);
 
@@ -84,7 +84,7 @@ export default function Home() {
     const man = searchParams.get('manufacturer') || 'all';
     const div = searchParams.get('division') || 'all';
     const ven = searchParams.get('vendor') || 'all';
-    const pt = searchParams.get('productType') || 'Non-Private Label';
+    const pt = searchParams.get('productType') || 'all';
 
     setScope(s);
     setSelectedState(st);
