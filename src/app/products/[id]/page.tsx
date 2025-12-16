@@ -18,7 +18,7 @@ import ProductMarginTrendChart from "@/components/charts/ProductMarginTrendChart
 import ProductPurchasesTable from "@/components/tables/ProductPurchasesTable";
 import KpiCard from "@/components/dashboard/KPI";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, QuantityOutlierFilter } from "@/lib/types";
+import type { Product, ProcessedPurchase, ProductSummary, ProductDetails, QuantityOutlierFilter, ProductMonthlySummary } from "@/lib/types";
 import { useEffect, useState, useMemo } from "react";
 import Loading from "@/app/loading";
 import { MultiplierAdjustmentDialog } from "@/components/dialogs/MultiplierAdjustmentDialog";
@@ -145,37 +145,42 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     notFound();
   }
 
-  const { product, purchases, summary, panIndiaSummary, monthlyAverages } = details;
+  const { product, purchases, summary, panIndiaSummary, monthlySummary, monthlyAverages } = details;
   
   const isFilterActive = initialScope && (initialScope === 'state' || initialScope === 'city');
+  
+  // Decide which summary to display based on the toggle
   const displaySummary = showPanIndia ? panIndiaSummary : summary;
+  const displayMonthlySummary = showPanIndia ? details.panIndiaMonthlySummary : monthlySummary;
+
 
   const getFormattedPeriod = () => {
       if (!period) return '';
-      if (period === 'mtd') return `Current Month & Last 3 Months`;
+      if (period === 'mtd') return `Analysis for Current Month`;
       try {
           const date = parse(period, 'yyyy-MM', new Date());
-          const startDate = startOfMonth(subMonths(date, 3));
-          return `${format(startDate, 'MMM yyyy')} - ${format(date, 'MMM yyyy')}`;
+          return `Analysis for ${format(date, 'MMMM yyyy')}`;
       } catch (e) {
           return '';
       }
   };
   
-  const getKpiTitle = () => {
-    let title = 'Analysis';
-     if (showPanIndia) {
-        title = `Pan-India Analysis`;
-     } else if (period === 'mtd') {
-        title = `Analysis`;
-     } else {
-         try {
-            const date = parse(period, 'yyyy-MM', new Date());
-            const startDate = startOfMonth(subMonths(date, 3));
-            title = `Analysis`;
-         } catch(e) {}
-     }
-    return `${title} (${getFormattedPeriod()})`;
+  const getKpiTitle = (monthly: boolean = false) => {
+    let title = 'Historical Analysis (Last 4 Months)';
+    if(monthly) {
+        if (period === 'mtd') {
+            title = `Analysis for Current Month`;
+        } else {
+            try {
+                const date = parse(period, 'yyyy-MM', new Date());
+                title = `Analysis for ${format(date, 'MMMM yyyy')}`;
+            } catch(e) {}
+        }
+    }
+    if (showPanIndia) {
+        return `Pan-India - ${title}`;
+    }
+    return title;
   }
 
   const getPageTitle = () => {
@@ -191,7 +196,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     } else {
         baseTitle = `${product.name} - Pan-India Analysis`;
     }
-     return `${baseTitle} (${getFormattedPeriod()})`;
+     return `${baseTitle}`;
   }
   
   const maskVendor = panIndiaSummary && summary && panIndiaSummary.bestVendor?.id !== summary.bestVendor?.id;
@@ -225,21 +230,35 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
           )}
         </div>
         
-        {/* KPI Section */}
-        {displaySummary && (
+        {/* KPI Section - Monthly */}
+        {displayMonthlySummary && (
           <div>
              <div className="flex items-center gap-4 mb-4">
                 <Separator />
-                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle()}</h2>
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(true)}</h2>
+                <Separator />
+            </div>
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <KpiCard title="Total Purchases" value={formatNumber(displayMonthlySummary.purchaseCount)} description="Valid purchases in period" icon={ShoppingCart} />
+                <KpiCard title="Total Quantity" value={formatNumber(displayMonthlySummary.totalQuantityPurchased)} description="Cumulative units in period" icon={ShoppingBag} />
+                <KpiCard title="Total Margin Loss" value={formatCurrency(displayMonthlySummary.totalMarginLoss)} description="Cumulative margin loss in period" icon={DollarSign} />
+                <KpiCard title="Margin Loss %" value={`${formatNumber(displayMonthlySummary.marginLossPercentage || 0)}%`} description="Margin loss / total cost" icon={Percent} />
+             </div>
+          </div>
+        )}
+
+        {/* KPI Section - Historical */}
+        {displaySummary && (
+          <div className="mt-6">
+             <div className="flex items-center gap-4 mb-4">
+                <Separator />
+                <h2 className="text-lg font-semibold whitespace-nowrap text-muted-foreground">{getKpiTitle(false)}</h2>
                 <Separator />
             </div>
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <KpiCard title="Total Purchases" value={formatNumber(displaySummary.purchaseCount)} description="Valid purchases in period" icon={ShoppingCart} />
-                <KpiCard title="Total Quantity" value={formatNumber(displaySummary.totalQuantityPurchased)} description="Cumulative units in period" icon={ShoppingBag} />
                 <KpiCard title="Best Margin %" value={`${formatNumber(displaySummary.bestMargin)}%`} description="Highest margin in period" icon={TrendingUp} />
                 <KpiCard title="Worst Margin %" value={`${formatNumber(displaySummary.worstMargin)}%`} description="Lowest margin in period" icon={TrendingDown} />
                 <KpiCard title="Average Margin %" value={`${formatNumber(displaySummary.averageMargin)}%`} description="Average margin in period" icon={Percent} />
-                <KpiCard title="Total Margin Loss" value={formatCurrency(displaySummary.totalMarginLoss)} description="Cumulative margin loss in period" icon={DollarSign} />
                 <KpiCard title="Mode Margin %" value={`${formatNumber(displaySummary.modeMargin)}%`} description="Most frequent margin in period" icon={Percent} />
                 <KpiCard 
                   title="Best Vendor" 
@@ -248,7 +267,6 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                   icon={maskVendor && showPanIndia ? Lock : Truck} 
                 />
                 <KpiCard title="Worst Vendor" value={displaySummary.worstVendor?.name || 'N/A'} description="Vendor with lowest margin" icon={Truck} />
-                <KpiCard title="Margin Loss %" value={`${formatNumber(displaySummary.marginLossPercentage || 0)}%`} description="Margin loss / total cost" icon={Percent} />
              </div>
           </div>
         )}
@@ -256,8 +274,8 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2 mt-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>YTD Average Purchase Price</CardTitle>
-                    <CardDescription>Year-to-date monthly average purchase price trend.</CardDescription>
+                    <CardTitle>Average Purchase Price (Last 4 Months)</CardTitle>
+                    <CardDescription>Monthly average purchase price trend for the analysis period.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ProductPriceTrendChart data={monthlyAverages} />
@@ -265,8 +283,8 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             </Card>
             <Card>
                 <CardHeader>
-                    <CardTitle>YTD Average Margin Trend</CardTitle>
-                    <CardDescription>Year-to-date monthly average margin percentage trend.</CardDescription>
+                    <CardTitle>Average Margin Trend (Last 4 Months)</CardTitle>
+                    <CardDescription>Monthly average margin percentage trend for the analysis period.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ProductMarginTrendChart data={monthlyAverages} />
@@ -276,7 +294,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Purchase History</CardTitle>
+                    <CardTitle>Purchase History (Last 4 Months)</CardTitle>
                     <CardDescription>
                         Displaying purchase records for the selected scope and period.
                     </CardDescription>

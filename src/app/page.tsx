@@ -157,12 +157,11 @@ export default function Home() {
   
   const getAnalysisPeriodTitle = () => {
       if (period === 'mtd') {
-        return `Analysis for Current Month & Last 3 Months`;
+        return `Analysis for Current Month`;
       }
       try {
           const date = parse(period, 'yyyy-MM', new Date());
-          const startDate = startOfMonth(subMonths(date, 3));
-          return `Analysis for ${format(startDate, 'MMM yyyy')} - ${format(date, 'MMM yyyy')}`;
+          return `Analysis for ${format(date, 'MMMM yyyy')}`;
       } catch(e) {
         return 'Analysis for Selected Period';
       }

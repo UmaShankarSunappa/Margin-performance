@@ -48,6 +48,13 @@ export interface ProductSummary {
   modeMargin: number;
 }
 
+export interface ProductMonthlySummary {
+  totalMarginLoss: number;
+  purchaseCount: number;
+  totalQuantityPurchased: number;
+  marginLossPercentage: number;
+}
+
 export interface VendorSummary {
   id: string;
   name: string;
@@ -92,6 +99,8 @@ export interface ProductDetails {
   purchases: ProcessedPurchase[];
   summary: ProductSummary | undefined;
   panIndiaSummary?: ProductSummary;
+  monthlySummary: ProductMonthlySummary;
+  panIndiaMonthlySummary?: ProductMonthlySummary;
   monthlyAverages: MonthlyAverage[];
 }
 

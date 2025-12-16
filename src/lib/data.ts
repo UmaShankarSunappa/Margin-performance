@@ -1,4 +1,4 @@
-import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter } from "@/lib/types";
+import type { AppData, Product, Purchase, Vendor, ProcessedPurchase, VendorProductSummary, MarginAnalysisProductSummary, ProductSummary, ProductDetails, VendorSummary, MonthlyAverage, HomePageData, QuantityOutlierFilter, ProductMonthlySummary } from "@/lib/types";
 import { parseISO, startOfYear, subMonths, isAfter, subYears, endOfMonth, startOfMonth, sub, isWithinInterval, getYear, format as formatDate, startOfToday, getMonth, parse } from 'date-fns';
 
 // Helper to find the mode of an array of numbers
@@ -393,23 +393,52 @@ export async function getProductDetails(
 
     const options = { customMultipliers, period, quantityOutlierFilter };
 
+    // This fetches data for the entire 4-month window
     const dataForPeriod = await getAppData({ ...filters }, options);
     const purchasesForPeriod = dataForPeriod.processedPurchases.filter(p => p.productId === productId);
     const summaryForPeriod = dataForPeriod.productsSummary.find(p => p.id === productId);
 
+    // Define the date range for the primary selected month
     const now = new Date();
-    const financialYearStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
+    let monthlyEndDate: Date;
+    let monthlyStartDate: Date;
+
+    if (period === 'mtd' || !period) {
+        monthlyEndDate = startOfToday();
+        monthlyStartDate = startOfMonth(now);
+    } else {
+        const [year, month] = period.split('-').map(Number);
+        const selectedMonthDate = new Date(year, month - 1, 1);
+        monthlyStartDate = startOfMonth(selectedMonthDate);
+        monthlyEndDate = endOfMonth(selectedMonthDate);
+    }
     
-    const allProductPurchasesYTD = (await getAppData({...filters}, { customMultipliers, period: 'mtd', quantityOutlierFilter })) // Use MTD to get up to current date for YTD
-      .processedPurchases
-      .filter(p => p.productId === productId && !p.isMarginOutlier && !p.isQuantityOutlier && parseISO(p.date) >= financialYearStart);
+    // Filter the 4-month purchases down to the single selected month for monthly KPIs
+    const monthlyPurchases = purchasesForPeriod.filter(p => {
+        const pDate = parseISO(p.date);
+        return pDate >= monthlyStartDate && pDate <= monthlyEndDate && !p.isMarginOutlier && !p.isQuantityOutlier;
+    });
+
+    const monthlySummary: ProductMonthlySummary = {
+        totalMarginLoss: monthlyPurchases.reduce((acc, p) => acc + p.marginLoss, 0),
+        purchaseCount: monthlyPurchases.length,
+        totalQuantityPurchased: monthlyPurchases.reduce((acc, p) => acc + p.quantity, 0),
+        marginLossPercentage: 0
+    };
+    const monthlyTotalPurchaseValue = monthlyPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
+    monthlySummary.marginLossPercentage = monthlyTotalPurchaseValue > 0 ? (monthlySummary.totalMarginLoss / monthlyTotalPurchaseValue) * 100 : 0;
+    
+
+    const allProductPurchases4Months = dataForPeriod.processedPurchases
+      .filter(p => p.productId === productId && !p.isMarginOutlier && !p.isQuantityOutlier);
       
     const monthlyAverages: MonthlyAverage[] = [];
-    for(let i = 0; i < 12; i++){
-        const monthDate = new Date(financialYearStart.getFullYear(), financialYearStart.getMonth() + i, 1);
-        if (monthDate > now) break;
+    const analysisStartDate = startOfMonth(subMonths(monthlyEndDate, 3));
 
-        const monthPurchases = allProductPurchasesYTD.filter(p => {
+    for(let i = 0; i < 4; i++){
+        const monthDate = startOfMonth(subMonths(monthlyEndDate, 3 - i));
+        
+        const monthPurchases = allProductPurchases4Months.filter(p => {
             const pDate = parseISO(p.date);
             return pDate.getFullYear() === monthDate.getFullYear() && pDate.getMonth() === monthDate.getMonth();
         });
@@ -425,11 +454,26 @@ export async function getProductDetails(
         }
     }
 
-
     let panIndiaSummary: ProductSummary | undefined = undefined;
+    let panIndiaMonthlySummary: ProductMonthlySummary | undefined = undefined;
+
     if (getPanIndiaData) {
         const panIndiaData = await getAppData({}, options);
         panIndiaSummary = panIndiaData.productsSummary.find(p => p.id === productId);
+
+        const panIndiaMonthlyPurchases = panIndiaData.processedPurchases.filter(p => {
+            const pDate = parseISO(p.date);
+            return p.productId === productId && pDate >= monthlyStartDate && pDate <= monthlyEndDate && !p.isMarginOutlier && !p.isQuantityOutlier;
+        });
+
+        panIndiaMonthlySummary = {
+            totalMarginLoss: panIndiaMonthlyPurchases.reduce((acc, p) => acc + p.marginLoss, 0),
+            purchaseCount: panIndiaMonthlyPurchases.length,
+            totalQuantityPurchased: panIndiaMonthlyPurchases.reduce((acc, p) => acc + p.quantity, 0),
+            marginLossPercentage: 0
+        };
+        const panIndiaMonthlyTotalPurchaseValue = panIndiaMonthlyPurchases.reduce((acc, p) => acc + p.purchasePrice * p.quantity, 0);
+        panIndiaMonthlySummary.marginLossPercentage = panIndiaMonthlyTotalPurchaseValue > 0 ? (panIndiaMonthlySummary.totalMarginLoss / panIndiaMonthlyTotalPurchaseValue) * 100 : 0;
     }
     
     return { 
@@ -437,6 +481,8 @@ export async function getProductDetails(
         purchases: purchasesForPeriod, 
         summary: summaryForPeriod, 
         panIndiaSummary,
+        monthlySummary,
+        panIndiaMonthlySummary,
         monthlyAverages
     };
 }
