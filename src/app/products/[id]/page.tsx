@@ -374,7 +374,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                     </Button>
                     <Button variant="outline" onClick={handleDownloadPurchaseDump} disabled={!details}>
                         <FileDown className="mr-2" />
-                        Download Purchase Dump
+                        download purchase raw data
                     </Button>
                 </div>
             </CardHeader>
